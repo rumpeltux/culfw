@@ -42,28 +42,29 @@
 
 uint16_t credit_10ms;
 
+void
+send_bit(uint16_t hightime, uint16_t lowtime)
+{
+  CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
+  my_delay_us(hightime);
+
+  CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
+  my_delay_us(lowtime);
+}
+
 #ifdef HAS_RAWSEND
 
 #define MAX_SNDMSG 12
 #define MAX_SNDRAW 12
 
+#define TMUL(x) ((x)<<4)
+#define TDIV(x) ((x)>>4)
+
 static uint8_t zerohigh, zerolow, onehigh, onelow;
-#define TMUL(x) (x<<4)
-#define TDIV(x) (x>>4)
-
-static void
-send_bit(uint8_t hightime, uint8_t lowtime)
-{
-  CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-  my_delay_us(TMUL(hightime));
-
-  CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-  my_delay_us(TMUL(lowtime));
-}
 
 static void
 send_default_bit(uint8_t bit) {
-  send_bit(bit ? onehigh : zerohigh, bit ? onelow : zerolow);
+  send_bit(TMUL(bit ? onehigh : zerohigh), TMUL(bit ? onelow : zerolow));
 }
 
 #else
@@ -73,11 +74,8 @@ send_default_bit(uint8_t bit) {
 static void
 send_default_bit(uint8_t bit)
 {
-  CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-  my_delay_us(bit ? FS20_ONE : FS20_ZERO);
-
-  CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-  my_delay_us(bit ? FS20_ONE : FS20_ZERO);
+  uint16_t time = bit ? FS20_ONE : FS20_ZERO;
+  send_bit(time, time);
 }
 
 #endif
@@ -146,7 +144,7 @@ sendraw(uint8_t *msg, uint8_t sync, uint8_t nbyte, uint8_t bitoff,
     for(i = 7; i > bitoff; i--)                 // broken bytes
       send_default_bit(msg[j] & _BV(i));
     if (finalhigh)
-      send_bit(finalhigh, 0);
+      send_bit(TMUL(finalhigh), 0);
 
     my_delay_ms(pause);                         // pause
 

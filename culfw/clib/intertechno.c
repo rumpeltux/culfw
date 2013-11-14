@@ -130,38 +130,29 @@ it_tunein(void)
 }
 
 static void
-send_IT_bit(uint8_t bit)
+send_IT_bit(uint8_t bit) {
+  uint16_t hightime = it_interval;
+  uint16_t lowtime = it_interval;
+  if (bit)
+    hightime *= 3;
+  else
+    lowtime *= 3;
+  send_bit(hightime, lowtime);
+}
+
+
+static void
+send_IT_tribit(uint8_t bit)
 {
-	if (bit == 1) {
-  	CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-  	my_delay_us(it_interval * 3);
- 	  CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-	  my_delay_us(it_interval);
-
-  	CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-  	my_delay_us(it_interval * 3);
- 	  CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-	  my_delay_us(it_interval);
+  if (bit == 1) {
+    send_IT_bit(1);
+    send_IT_bit(1);
   } else if (bit == 0) {
-  	CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-  	my_delay_us(it_interval);
- 	  CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-	  my_delay_us(it_interval * 3);
-
-  	CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-  	my_delay_us(it_interval);
- 	  CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-	  my_delay_us(it_interval * 3);
+    send_IT_bit(0);
+    send_IT_bit(0);
   } else {
-  	CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-  	my_delay_us(it_interval);
- 	  CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-	  my_delay_us(it_interval * 3);
-
-  	CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-  	my_delay_us(it_interval * 3);
- 	  CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-	  my_delay_us(it_interval);  	
+    send_IT_bit(0);
+    send_IT_bit(1);
   }
 }
 
@@ -201,21 +192,14 @@ it_send (char *in) {
 	
 		for(i = 0; i < it_repetition; i++)  {
 		  for(j = 1; j < 13; j++)  {
-			  if(in[j+1] == '0') {
-					send_IT_bit(0);
-				} else if (in[j+1] == '1') {
-					send_IT_bit(1);
-				} else {
-					send_IT_bit(2);
-				}
-			}
-			// Sync-Bit
-		  CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-		  my_delay_us(it_interval);
-		  CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-		  for(k = 0; k < 31; k++)  {
-			  my_delay_us(it_interval);
-			}
+		     send_IT_tribit(in[j+1] - '0');
+		  }
+
+		  // Sync-Bit
+		  send_IT_bit(0);
+
+		  for(k = 0; k < 31; k++)
+		    my_delay_us(it_interval);
 		} //Do it n Times
 	
   	if(intertechno_on) {
