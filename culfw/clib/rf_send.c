@@ -52,22 +52,26 @@ static uint8_t zerohigh, zerolow, onehigh, onelow;
 #define TDIV(x) (x>>4)
 
 static void
-send_bit(uint8_t bit)
+send_bit(uint8_t hightime, uint8_t lowtime)
 {
   CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-  my_delay_us(bit ? TMUL(onehigh) : TMUL(zerohigh));
+  my_delay_us(TMUL(hightime));
 
   CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-  my_delay_us(bit ? TMUL(onelow) : TMUL(zerolow));
+  my_delay_us(TMUL(lowtime));
+}
+
+static void
+send_default_bit(uint8_t bit) {
+  send_bit(bit ? onehigh : zerohigh, bit ? onelow : zerolow);
 }
 
 #else
-
 #define MAX_SNDMSG 6    // FS20: 4 or 5 + CRC, FHT: 5+CRC
 #define MAX_SNDRAW 7    // MAX_SNDMSG*9/8 (parity bit)
 
 static void
-send_bit(uint8_t bit)
+send_default_bit(uint8_t bit)
 {
   CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
   my_delay_us(bit ? FS20_ONE : FS20_ZERO);
@@ -79,12 +83,12 @@ send_bit(uint8_t bit)
 #endif
 
 static void sendraw(uint8_t *msg, uint8_t sync, uint8_t nbyte, uint8_t bitoff, 
-                uint8_t repeat, uint8_t pause);
+                uint8_t repeat, uint8_t pause, uint8_t finalhigh);
 
 // msg is with parity/checksum already added
 static void
 sendraw(uint8_t *msg, uint8_t sync, uint8_t nbyte, uint8_t bitoff,
-                uint8_t repeat, uint8_t pause)
+                uint8_t repeat, uint8_t pause, uint8_t finalhigh)
 {
   // 12*800+1200+nbyte*(8*1000)+(bits*1000)+800+10000 
   // message len is < (nbyte+2)*repeat in 10ms units.
@@ -115,16 +119,18 @@ sendraw(uint8_t *msg, uint8_t sync, uint8_t nbyte, uint8_t bitoff,
   ccTX();                                       // Enable TX 
   do {
     for(i = 0; i < sync; i++)                   // sync
-      send_bit(0);
+      send_default_bit(0);
     if(sync)
-      send_bit(1);
+      send_default_bit(1);
     
     for(j = 0; j < nbyte; j++) {                // whole bytes
       for(i = 7; i >= 0; i--)
-        send_bit(msg[j] & _BV(i));
+        send_default_bit(msg[j] & _BV(i));
     }
     for(i = 7; i > bitoff; i--)                 // broken bytes
-      send_bit(msg[j] & _BV(i));
+      send_default_bit(msg[j] & _BV(i));
+    if (finalhigh)
+      send_bit(finalhigh, 0);
 
     my_delay_ms(pause);                         // pause
 
@@ -193,7 +199,7 @@ addParityAndSendData(uint8_t *hb, uint8_t hblen,
   zerohigh = zerolow = TDIV(FS20_ZERO);
   onehigh = onelow = TDIV(FS20_ONE);
 #endif
-  sendraw(obuf, 12, oby, obi, repeat, FS20_PAUSE);
+  sendraw(obuf, 12, oby, obi, repeat, FS20_PAUSE, 0);
 }
 
 void
@@ -216,14 +222,14 @@ fs20send(char *in)
 }
 
 #ifdef HAS_RAWSEND
-//G0843E540202040A78DE81D80
-//G0843E540202040A78DE80F80
+//G0843E54020204000A78DE81D80
+//G0843E54020204000A78DE80F80
 
 void
 rawsend(char *in)
 {
   uint8_t hb[16]; // 33/2: see ttydata.c
-  uint8_t nby, nbi, pause, repeat, sync;
+  uint8_t nby, nbi, pause, repeat, sync, finalhigh;
 
   fromhex(in+1, hb, sizeof(hb));
   sync = hb[0];
@@ -235,7 +241,8 @@ rawsend(char *in)
   zerolow  = hb[4];
   onehigh  = hb[5];
   onelow   = hb[6];
-  sendraw(hb+7, sync, nby, nbi, repeat, pause);
+  finalhigh = hb[7];
+  sendraw(hb+8, sync, nby, nbi, repeat, pause, finalhigh);
 }
 
 
@@ -278,7 +285,7 @@ em_send(char *in)
     oby++; obi = 7;
   }
 
-  sendraw(obuf, 12, oby, obi, 3, FS20_PAUSE);
+  sendraw(obuf, 12, oby, obi, 3, FS20_PAUSE, 0);
 }
 
 #endif
