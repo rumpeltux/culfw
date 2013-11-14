@@ -82,6 +82,22 @@ send_default_bit(uint8_t bit)
 
 #endif
 
+/**
+ * Send raw data using the following specifications. Timings for 0 and 1 are
+ * used from the global onehigh, zerohigh, onelow and zerolow settings.
+ * msg: The raw data to send. Most significant bits will be sent first.
+ * sync: Number of 0 bits to send as sync-sequence. Will be followed by exactly
+ *     one 1 bit unless sync is set to 0 in which case no sync sequence will
+ *     be sent.
+ * nbyte: Number of complete bytes in msg.
+ * bitoff: bit index in the additional byte that should not be sent anymore.
+ *     E.g. to send 2 additional bits, bitoff would have to be 5 (7-2).
+ *     Specify 7 if you don't want anything sent of the additional byte.
+ * repeat: Number of times the packet shall be repeated.
+ * pause: Pause in ms after each packet.
+ * finalhigh: length of the final high bit before going into pause.
+ *     Specify 0 if you don't need this.
+ */
 static void sendraw(uint8_t *msg, uint8_t sync, uint8_t nbyte, uint8_t bitoff, 
                 uint8_t repeat, uint8_t pause, uint8_t finalhigh);
 
@@ -234,7 +250,7 @@ rawsend(char *in)
   fromhex(in+1, hb, sizeof(hb));
   sync = hb[0];
   nby = (hb[1] >> 4);
-  nbi = (hb[1] & 0xf);
+  nbi = 7 - (hb[1] & 0xf);
   pause = (hb[2] >> 4);
   repeat = (hb[2] & 0xf);
   zerohigh = hb[3];
