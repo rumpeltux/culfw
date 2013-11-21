@@ -1,0 +1,123 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" ng-app>
+
+<head>
+  <title>culfw Raw Command Generator</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.0/angular.min.js"></script>
+  <style type="text/css">
+    body   { background-color: #FFFFE7;}
+    #left  { position:absolute; top:20px; left:20px; width:140px; }
+    #right { position:absolute; top:20px; left:180px; bottom:20px; right:10px; }
+    body>div#left { position:fixed; }
+    h2,h3,h4 {     color:#52865D; line-height:1.3;
+             margin-top:1.5em; font-family:Arial,Sans-serif; }
+    div#block { border:1px solid gray; background: #F8F8E0; padding:0.7em; }
+    div#dist { padding-top:0.3em; }
+    a {  color: #278727; }
+    .settings { display: table; }
+    .settings > div { display: table-cell; padding-right: 1em; }
+    .settings > div > input { width: 50px; }
+    .settings > div > label { min-width: 75px; display: inline-block; text-align: right; }
+  </style>
+  <script>
+function toHex(data, n) {
+  var number = parseInt(data || '0', 10);
+  var hex = '000000000000000000000' + number.toString(16);
+  return hex.substr(hex.length - n);
+}
+function CmdCtrl($scope) {
+  $scope.dataHexi = '001515';
+  $scope.tfh = $scope.t0h = $scope.t1l = 420;
+  $scope.t1h = $scope.t0l = 1260;
+  $scope.pause = 7;
+  $scope.repeats = 5;
+  $scope.syncBits = 0;
+  
+  $scope.syncBitsHex = function() { return toHex($scope.syncBits, 2); };
+  $scope.byteCount = function() { return toHex(($scope.data.length / 8) >> 0, 1); };
+  $scope.bitCount = function() { return toHex($scope.data.length % 8, 1); };
+  $scope.pauseHex = function() { return toHex($scope.pause, 1); };
+  $scope.repeatsHex = function() { return toHex($scope.repeats, 1); };
+  
+  $scope.t0hHex = function() { return toHex($scope.t0h / 16, 2); };
+  $scope.t0lHex = function() { return toHex($scope.t0l / 16, 2); };
+  $scope.t1hHex = function() { return toHex($scope.t1h / 16, 2); };
+  $scope.t1lHex = function() { return toHex($scope.t1l / 16, 2); };
+  $scope.tfhHex = function() { return toHex($scope.tfh / 16, 2); };
+  
+  $scope.changeBin = function(opt_noUpdateHex) {
+    $scope.data = $scope.dataBin.replace(/ /g, '');
+    if (!opt_noUpdateHex) {
+      $scope.dataHexi = $scope.dataHex();
+    }
+  };
+  $scope.changeHex = function() {
+    var nibbles = $scope.dataHexi.length;
+    var result = '';
+    for (var i=0; i < nibbles; i++) {
+      var binstr = '0000' + parseInt($scope.dataHexi.substr(i, 1), 16).toString(2);
+      result += binstr.substr(binstr.length - 4);
+      if (i % 2 == 1) result += ' ';
+    }
+    $scope.dataBin = result;
+    $scope.changeBin(true);
+  };
+  $scope.dataHex = function() {
+    var data = $scope.data;
+    var bytes = (data.length / 8) >> 0;
+    var bits = data.length % 8;
+    var extrabits = (8 - bits) % 8;
+    data += '0000000'.substr(0, extrabits);
+    var result = '';
+    for (var i = 0; i < bytes + (extrabits ? 1 : 0); i++) {
+      result += toHex(parseInt(data.substr(i*8, 8), 2), 2);
+    }
+    return result;
+  };
+  $scope.changeHex();
+};
+  </script>
+</head>
+<body>
+
+
+<h2>culfw Raw Command Generator</h2>
+<p>This tool helps you assemble raw messages to be sent by culfw.</p>
+<div ng-controller="CmdCtrl">
+  <div class="settings">
+    <div>
+      <h3>Timings</h3>
+      <label>0 high:</label> <input type="number" max="4080" ng-model="t0h" /> us
+      <label>1 high:</label> <input type="number" max="4080" ng-model="t1h" /> us<br />
+      <label>0 low:</label> <input type="number" max="4080" ng-model="t0l" /> us
+      <label>1 low:</label> <input type="number" max="4080" ng-model="t1l" /> us<br />
+      <label>Final high:</label> <input type="number" max="4080" ng-model="tfh" /> us<br />
+      <label>Pause:</label> <input type="number" max="15" ng-model="pause" /> ms<br />
+    </div>
+    <div>
+      <h3>Data</h3>
+      <label>Data (bin):</label> <input type="text" ng-model="dataBin" ng-change="changeBin()" style="min-width: 200px" /><br />
+      <label>Data (hex):</label> <input type="text" ng-model="dataHexi" ng-change="changeHex()" style="min-width: 200px" /><br />
+      <label>Repeat:</label> <input type="number" max="15" ng-model="repeats" /> times<br />
+      <label>Sync bits:</label> <input type="number" max="255" ng-model="syncBits" value="0" /><br />
+    </div>
+  </div>
+  <div>
+    <h3>CUL Command</h3>
+    <tt>G<span class="sync">{{syncBitsHex()}}</span
+    ><span class="data">{{byteCount()}}</span
+    ><span class="data">{{bitCount()}}</span
+    ><span class="pause">{{pauseHex()}}</span
+    ><span class="repeats">{{repeatsHex()}}</span
+    ><span class="timing">{{t0hHex()}}</span
+    ><span class="timing">{{t0lHex()}}</span
+    ><span class="timing">{{t1hHex()}}</span
+    ><span class="timing">{{t1lHex()}}</span
+    ><span class="timing">{{tfhHex()}}</span
+    ><span class="data">{{dataHex()}}</span></tt>
+  </div>
+</div>
+
+</body>
+</html>
