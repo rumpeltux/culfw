@@ -24,6 +24,10 @@
 #include "dmx.h"
 #endif
 
+#ifdef HAS_HELIOS
+#include "helios.h"
+#endif
+
 #ifdef HAS_MORITZ
 #include "rf_moritz.h"
 #endif
@@ -232,6 +236,10 @@ fs20send(char *in)
   if (dmx_fs20_emu( in ))
 	return;
 #endif
+#ifdef HAS_HELIOS
+  if (helios_fs20_emu( in ))
+	return;
+#endif
   addParityAndSend(in, 6, 3);
 }
 
@@ -300,6 +308,53 @@ em_send(char *in)
   }
 
   sendraw(obuf, 12, oby, obi, 3, FS20_PAUSE, 0);
+}
+
+void
+ks_send(char *in)
+{
+  uint8_t iby, obuf[MAX_SNDRAW], oby;
+  int8_t  ibi, obi;
+  uint8_t hb[MAX_SNDMSG];
+
+  uint8_t hblen = fromhex(in+1, hb, MAX_SNDMSG-1);
+
+//  KS may have different length - TODO: byte padding for some sensor types
+//  if (hblen != 9) {
+//  DS_P(PSTR("KS send\r\n"));
+//    return;
+//  }
+
+  zerohigh = TDIV(855); 
+  zerolow  = TDIV(366);
+  onehigh  = TDIV(366); 
+  onelow   = TDIV(855);
+
+  // calc checksum
+  hb[hblen] = cksum3( hb, hblen );
+  hblen++;
+
+  // Copy the message and add parity-bits
+  iby=oby=0;
+  ibi=obi=7;
+  obuf[oby] = 0;
+
+  while(iby<hblen) {
+
+    for (ibi=0; ibi<4; ibi++)
+      obi = abit(hb[iby] & _BV(ibi), obuf, &oby, obi);
+
+    obi = abit(1, obuf, &oby, obi); // always 1
+
+    for (ibi=4; ibi<8; ibi++)
+      obi = abit(hb[iby] & _BV(ibi), obuf, &oby, obi);
+
+    obi = abit(1, obuf, &oby, obi); // always 1
+
+    iby++;
+  }
+
+  sendraw(obuf, 10, oby, obi, 3, FS20_PAUSE, 0);
 }
 
 #endif
