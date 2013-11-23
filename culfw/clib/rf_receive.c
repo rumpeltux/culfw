@@ -79,6 +79,7 @@ static uint16_t hightime, lowtime;
 #else
 static uint8_t hightime, lowtime;
 #endif
+static uint8_t error=0;
 
 static uint8_t cksum3(uint8_t *buf, uint8_t len);
 static void addbit(bucket_t *b, uint8_t bit);
@@ -411,35 +412,94 @@ uint8_t analyze_revolt(bucket_t *b)
 }
 #endif
 //////////////////////////////////////////////////////////////////////
+
+void ReportTime(uint16_t time) {
+  if (time) {
+    DC(time);
+#ifdef LONG_PULSE
+    if(time > 0xff)
+      DC(time >> 8);
+#endif
+  }
+}
+
+void ReportMonitor(uint16_t timehigh, uint16_t timelow) {
+    if(timehigh || timelow) {
+      uint8_t rssi = 0;
+      if((tx_report & REP_LCDMON) || (tx_report & REP_BINTIME)) {
+#ifdef HAS_LCD
+        lcd_txmon(timehigh, timelow);
+#endif
+        int8_t rssi_val = cc1100_readReg(CC1100_RSSI);    //  0..256
+        rssi = rssi_val + 128;
+        if(rssi < 64)                                  // Drop low and high 25%
+          rssi = 0;
+        else if(rssi >= 192)
+          rssi = 15;
+        else 
+          rssi = (rssi-64)>>3;
+
+        rssi += 'a';
+        if (error) {
+          // Use upper case letters instead to indicate an error.
+          // If it is set, we missed to correctly report at least one flank.
+          rssi += 'A';
+          error = 0;
+        } else {
+          rssi += 'a';
+        }
+        DC(rssi);
+      }
+      // Datatype indicator:
+      //   b[7..4]: must be 0
+      //   b[3]: high time present (after a falling flank)
+      //   b[2]: high time  size
+      //   b[1]: low time present (after a rising flank)
+      //   b[0]: low time size
+      // data-type size: 0 == 8bit, 1 == 16bit. LSByte comes first.
+      // If both flanks are present, the order of bytes is: hightime, lowtime.
+
+      // Examples:
+      //   Quality 'c', 8bit high time, 16 bit low time (1011): 0x63 0x0B RR FF FF
+      //   Quality 'n', error, 8bit low time (0010): 0x4E 0x02 FF
+      //   Magic value for timeout / end of packet: 0x2E ('.')
+
+      if(tx_report & REP_MONITOR) {
+        if (tx_report & REP_BINTIME) {
+          uint8_t datatype = 0;
+          datatype |= timehigh ? 8 : 0;
+          datatype |= timelow ? 2 : 0;
+#ifdef LONG_PULSE
+          datatype |= timehigh > 0xff ? 4 : 0;
+          datatype |= timelow > 0xff ? 1 : 0;
+#endif
+          DC(datatype);
+          ReportTime(timehigh);
+          ReportTime(timelow);
+        } else {
+          if (timelow) DC('r');
+          if (timehigh) DC('f');
+        }
+      }
+  }
+}
+
 void
 RfAnalyze_Task(void)
 {
   uint8_t datatype = 0;
   bucket_t *b;
 
-  if(lowtime) {
-    if(tx_report & REP_LCDMON) {
-#ifdef HAS_LCD
-      lcd_txmon(hightime, lowtime);
-#else
-      uint8_t rssi = cc1100_readReg(CC1100_RSSI);    //  0..256
-      rssi = (rssi >= 128 ? rssi-128 : rssi+128);    // Swap
-      if(rssi < 64)                                  // Drop low and high 25%
-        rssi = 0;
-      else if(rssi >= 192)
-        rssi = 15;
-      else 
-        rssi = (rssi-80)>>3;
-      DC('a'+rssi);
-#endif
-    }
-    if(tx_report & REP_MONITOR) {
-      DC('r'); if(tx_report & REP_BINTIME) DC(hightime);
-      DC('f'); if(tx_report & REP_BINTIME) DC(lowtime);
-    }
+  if(tx_report & REP_MONITOR) {
+    // Get the times before reporting and reset the immediately,
+    // so that the receive interrupt can write new values.
+    uint16_t timehigh = hightime;
+    uint16_t timelow = lowtime;
+    hightime = 0;
     lowtime = 0;
-  }
 
+    ReportMonitor(timehigh, timelow);
+  }
 
   if(bucket_nrused == 0)
     return;
@@ -630,7 +690,7 @@ ISR(TIMER1_COMPA_vect)
   TCNT1=tmp;                            // reinitialize timer to measure times > SILENCE
 #endif
   if(tx_report & REP_MONITOR)
-    DC('.');
+    DC('.'); // 0x2E
 
   if(bucket_array[bucket_in].state < STATE_COLLECT ||
      bucket_array[bucket_in].byteidx < 2) {    // false alarm
@@ -733,8 +793,9 @@ ISR(CC1100_INTVECT)
 #ifdef LONG_PULSE
   uint16_t c = (TCNT1>>4);               // catch the time and make it smaller
 #else
-  uint8_t c = (TCNT1>>4);               // catch the time and make it smaller
+  uint8_t c = (TCNT1>>4);                // catch the time and make it smaller
 #endif
+  TCNT1 = 0;                             // restart timer
 
   bucket_t *b = bucket_array+bucket_in; // where to fill in the bit
 
@@ -767,15 +828,20 @@ ISR(CC1100_INTVECT)
 #endif
     ) {
       addbit(b, 1);
-      TCNT1 = 0;
+    }
+    if (hightime) {
+      error = 1;
     }
     hightime = c;
     return;
-
   }
 
-  lowtime = c-hightime;
-  TCNT1 = 0;                          // restart timer
+  // Rising Edge
+  if (lowtime) {
+    error = 2;
+  }
+  lowtime = c;
+
   if( (b->state == STATE_HMS)
 #ifdef HAS_ESA
      || (b->state == STATE_ESA) 

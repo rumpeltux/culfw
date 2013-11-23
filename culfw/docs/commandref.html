@@ -882,16 +882,34 @@
       <li>Bit 0: Report known messages (parity & checksum ok), with type prefix.
       <li>Bit 1: Report each of the (repeated) packets of a message
       <li>Bit 2: Report detailed data, even with wrong parity / checksum.
-      <li>Bit 3: Monitor mode: output an r on a risings edge and 'f' on a falling
-                 edge. Output a '.' at the end of the message (no signal for
-                 4msec).
-      <li>Bit 4: Timing: in monitor mode output one additional byte of the
-                 internal microsecond timer, divided by 16. This is binary!
+      <li>Bit 3: Monitor mode: output an r on a risings edge and 'f' on a falling edge.
+                  (If binary timing (see below) is enabled, a different format is used).
+                 Output a '.' at the end of the message (no signal for 4msec).
+      <li>Bit 4: Binary Timing: (if Monitor mode is on).
+                 Best used with RSSI reporting (bit 7) to filter out low-quality signals.
+                 Reports 1 Status Bit after the quality indicator before reporting at
+                 least one timing.
+                 <ul>
+                 <li>Status Bit 4: A falling flank was detected and a timing byte for
+                     the high time follows
+                 <li>Status Bit 3: The timing byte for the high time is actually two
+                     bytes (only for LONG_PULSE devices).
+                 <li>Status Bit 2: A rising flank was detected and a timing byte for
+                     the low time follows (if status bit 4 is set, follows after the
+                     high time byte(s)).
+                 <li>Status Bit 1: The timing byte for the high time is actually two
+                     bytes (only for LONG_PULSE devices).
+                 </ul>
+                 Timings report the internal microsecond timer, divided by 16 in binary
+                 data. If a two-byte timing is reported, the first one is the LSB.<br>
+                 Example: 0x63 0x03 0x15 0x02 reports a RSSI of 'c' (3: relatively weak)
+                 and a rising flank with a measured lowtime of 0x215 (= 8528ms).
       <li>Bit 5: RSSI: report RSSI value as an additional HEX byte after digested
                  data or as a separate byte if Bit 3 is set too.
       <li>Bit 6: Report FHT protocol messages (ack, etc)
-      <li>Bit 7: CUL/CUN: Report raw RSSI data (a==weak ... p==strong signal)
-               CUR: Grafic representation: dark==weak ... light == stong signal
+      <li>Bit 7: CUL/CUN: Report raw RSSI data (a==weak ... p==strong signal or
+                 A...P if a timing (bit 4) couldn't be reported)<br>
+                 CUR: Grafic representation: dark==weak ... light == stong signal
       </ul>
       <br>
       Note: 00 disables radio reception, any other value initializes the radio
