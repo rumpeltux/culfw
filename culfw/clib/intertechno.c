@@ -131,82 +131,34 @@ it_tunein(void)
 }
 
 static void
-send_IT_bit(uint8_t bit) {
-  uint16_t hightime = it_interval;
-  uint16_t lowtime = it_interval;
-  if (bit)
-    hightime *= 3;
-  else
-    lowtime *= 3;
+send_IT_bit(uint8_t bit, uint8_t version) {
+  uint16_t hightime = version == 3 ? it_interval_v3 : it_interval;
+  uint16_t lowtime = hightime;
+  uint8_t multiplier = version == 3 ? 5 : 3;
+  if (!bit)
+    lowtime *= multiplier;
+  else if (version != 3)
+    hightime *= multiplier;
   send_bit(hightime, lowtime);
 }
 
-
 static void
-send_IT_tribit(uint8_t bit)
+send_IT_tribit(uint8_t bit, uint8_t version)
 {
-  if (bit == 1) {
-    send_IT_bit(1);
-    send_IT_bit(1);
-  } else if (bit == 0) {
-    send_IT_bit(0);
-    send_IT_bit(0);
-  } else {
-    send_IT_bit(0);
-    send_IT_bit(1);
-  }
+  static const uint8_t bitsequence[2][3] = {{0, 3, 1}, {1, 2, 3}};
+  bit = bitsequence[version == 3 ? 1 : 0][bit > 1 ? 2 : bit];
+  send_IT_bit(bit & 2, version);
+  send_IT_bit(bit & 1, version);
 }
 
 static void
 send_IT_start_V3(void) {
-  CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-	my_delay_us(it_interval);
-  CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-  my_delay_us(it_interval_v3 * 10);
+  send_bit(it_interval, it_interval_v3 * 10);
 }
 
 static void
 send_IT_stop_V3(void) {
-  CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-	my_delay_us(it_interval_v3);
-  CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-  my_delay_us(it_interval_v3 * 40);
-}
-
-static void
-send_IT_bit_V3(uint8_t bit)
-{
-	if (bit == 1) {
-  	CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-  	my_delay_us(it_interval_v3);
- 	  CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-	  my_delay_us(it_interval_v3 * 5);
-
-  	CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-  	my_delay_us(it_interval_v3);
- 	  CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-	  my_delay_us(it_interval_v3);
-  } else if (bit == 0) {
-  	CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-  	my_delay_us(it_interval_v3);
- 	  CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-	  my_delay_us(it_interval_v3);
-
-  	CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-  	my_delay_us(it_interval_v3);
- 	  CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-	  my_delay_us(it_interval_v3 * 5);
-  } else {
-  	CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-  	my_delay_us(it_interval_v3);
- 	  CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-	  my_delay_us(it_interval_v3);
-
-  	CC1100_OUT_PORT |= _BV(CC1100_OUT_PIN);         // High
-  	my_delay_us(it_interval_v3);
- 	  CC1100_OUT_PORT &= ~_BV(CC1100_OUT_PIN);       // Low
-	  my_delay_us(it_interval_v3);  	
-  }
+  send_bit(it_interval_v3, it_interval_v3 * 40);
 }
 
 static void
@@ -243,30 +195,20 @@ it_send (char *in) {
 	  ccTX();                       // Enable TX 
 	
     int8_t sizeOfPackage = strlen(in)-1; // IT-V1 = 14, IT-V3 = 33
+    uint8_t version = sizeOfPackage == 3 ? 3 : 1;
 	  
 		for(i = 0; i < it_repetition; i++)  {
-      if (sizeOfPackage == 33) {      
+      if (version == 3) {      
         send_IT_start_V3();
       }
 		  for(j = 1; j < sizeOfPackage; j++)  {
-          if (sizeOfPackage == 33) {
-					  send_IT_bit_V3(0);
-          } else {
-          }      
-          if (sizeOfPackage == 33) {
-					  send_IT_bit_V3(1);
-          } else {
-          }  
-				} else {
-          if (sizeOfPackage == 33) {
-					  send_IT_bit_V3(2);
-		  }
-			}
-      if (sizeOfPackage == 33) {  
+		send_IT_tribit(in[j+1] - '0', version);
+		}
+      if (version == 3) {  
         send_IT_stop_V3();
       } else {
 		  // Sync-Bit
-		  send_IT_bit(0);
+		  send_IT_bit(0, version);
 
 		  for(k = 0; k < 31; k++)
 		    my_delay_us(it_interval);

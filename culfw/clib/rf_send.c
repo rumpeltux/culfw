@@ -374,6 +374,6 @@ ur_send(char *in)
   onehigh  = TDIV(540);
   onelow   = TDIV(1700);
   hb[3] = 0x80;     //10000000
-  sendraw(hb, 0, 3, 6, 3, 15);
+  sendraw(hb, 0, 3, 6, 3, 15, 0);
 }
 #endif
