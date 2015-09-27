@@ -10,14 +10,19 @@
 #define HAS_RAWSEND			//
 #define HAS_FASTRF			// PROGMEM:  468b  RAM:  1b
 #define HAS_ASKSIN
+#define HAS_ASKSIN_FUP
 #undef  HAS_ESA
-#define HAS_INTERTECHNO
+#undef  HAS_INTERTECHNO
+#define HAS_TCM97001
 #define HAS_MORITZ
 #undef  HAS_RWE
 #define HAS_TX3
 #define HAS_HOERMANN
 #undef  HAS_MEMFN
 #define HAS_RF_ROUTER
+#define HAS_CC1101_RX_PLL_LOCK_CHECK_TASK_WAIT
+#define HAS_CC1101_PLL_LOCK_CHECK_MSG
+#define HAS_CC1101_PLL_LOCK_CHECK_MSG_SW
 
 /*
  * Board definition according to
@@ -56,6 +61,6 @@
 #define HAS_UART		1
 #define UART_BAUD_RATE		38400
 
-#define TTY_BUFSIZE		80
+#define TTY_BUFSIZE		104
 
 #endif

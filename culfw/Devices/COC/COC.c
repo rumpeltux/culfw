@@ -55,10 +55,17 @@
 #include "intertechno.h"
 #endif
 
+#ifdef HAS_MBUS
+#include "rf_mbus.h"
+#endif
+
 const PROGMEM t_fntab fntab[] = {
 
   { 'm', getfreemem },
 
+#ifdef HAS_MBUS
+  { 'b', rf_mbus_func },
+#endif
   { 'C', ccreg },
   { 'F', fs20send },
 #ifdef HAS_INTERTECHNO
@@ -85,6 +92,10 @@ const PROGMEM t_fntab fntab[] = {
 #ifdef HAS_RAWSEND
   { 'G', rawsend },
   { 'M', em_send },
+  { 'K', ks_send },
+#endif
+#ifdef HAS_MBUS
+  { 'b', rf_mbus_func },
 #endif
   { 'R', read_eeprom },
   { 'T', fhtsend },
@@ -114,6 +125,13 @@ main(void)
 
   led_init();
   LED_ON();
+
+#ifdef MARK433_PORT
+  MARK433_PORT |= _BV( MARK433_BIT ); // Pull 433MHz marker
+#endif
+#ifdef MARK915_PORT
+  MARK915_PORT |= _BV( MARK915_BIT ); // Pull 915MHz marker
+#endif
 
   spi_init();
 
@@ -185,6 +203,9 @@ main(void)
 #endif
 #ifdef HAS_MORITZ
     rf_moritz_task();
+#endif
+#ifdef HAS_MBUS
+    rf_mbus_task();
 #endif
   }
 

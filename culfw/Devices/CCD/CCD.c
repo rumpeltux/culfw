@@ -55,10 +55,21 @@
 #include "intertechno.h"
 #endif
 
+#ifdef HAS_MBUS
+#include "rf_mbus.h"
+#endif
+
+#ifdef HAS_KOPP_FC
+#include "kopp-fc.h"
+#endif
+
 const PROGMEM t_fntab fntab[] = {
 
   { 'm', getfreemem },
 
+#ifdef HAS_MBUS
+  { 'b', rf_mbus_func },
+#endif
   { 'C', ccreg },
   { 'F', fs20send },
 #ifdef HAS_INTERTECHNO
@@ -78,6 +89,9 @@ const PROGMEM t_fntab fntab[] = {
 #endif
 #ifdef HAS_DOGM
   { 'D', dogm_func },
+#endif
+#ifdef HAS_KOPP_FC
+  { 'k', kopp_fc_func },
 #endif
 #ifdef HAS_ONEWIRE
   { 'O', onewire_func },
@@ -185,6 +199,12 @@ main(void)
 #endif
 #ifdef HAS_MORITZ
     rf_moritz_task();
+#endif
+#ifdef HAS_KOPP_FC
+	kopp_fc_task();
+#endif
+#ifdef HAS_MBUS
+    rf_mbus_task();
 #endif
   }
 

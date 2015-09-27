@@ -13,11 +13,14 @@
 #define USB_BUFSIZE             64      // Must be a supported USB endpoint size
 #define USB_MAX_POWER	       100
 #define HAS_FHT_80b                     // PROGMEM: 1374b, RAM: 90b
-#define HAS_FHT_8v                      // PROGMEM:  586b  RAM: 23b
 #define HAS_RF_ROUTER                   // PROGMEM: 1248b  RAM: 44b
+#define HAS_CC1101_RX_PLL_LOCK_CHECK_TASK_WAIT	// PROGMEM: 118b
+#define HAS_CC1101_PLL_LOCK_CHECK_MSG		// PROGMEM:  22b
+#define HAS_CC1101_PLL_LOCK_CHECK_MSG_SW	// PROGMEM:  22b
 
 #if defined(CUL_V3) || defined(CUL_V4)
-#  define TTY_BUFSIZE           64      // RAM: TTY_BUFSIZE*4
+#  define HAS_FHT_8v                    // PROGMEM:  586b  RAM: 23b
+#  define HAS_FHT_TF
 #  define FHTBUF_SIZE          174      //                 RAM: 174b
 #  define RCV_BUCKETS            4      //                 RAM: 25b * bucket
 #  define RFR_DEBUG                     // PROGMEM:  354b  RAM: 14b
@@ -25,13 +28,30 @@
 #  define HAS_RAWSEND                   //
 #  define HAS_FASTRF                    // PROGMEM:  468b  RAM:  1b
 #  define HAS_ASKSIN
+#  define HAS_ASKSIN_FUP
 #  define HAS_MORITZ
-#  define HAS_RWE
+#  define HAS_KOPP_FC
 #  define HAS_ESA
 #  define HAS_TX3
+#  define HAS_RFNATIVE
 #  define HAS_INTERTECHNO
+#  define HAS_TCM97001
+#  define HAS_UNIROLL
 #  define HAS_HOERMANN
 #  define HAS_MEMFN
+#  define HAS_SOMFY_RTS
+#  define HAS_BELFOX
+#endif
+
+#if defined(CUL_V4)
+#  define TTY_BUFSIZE           64      // RAM: TTY_BUFSIZE*4
+#endif
+
+#if defined(CUL_V3)
+#  define TTY_BUFSIZE          128      // RAM: TTY_BUFSIZE*4
+#  define HAS_MBUS
+#  define MBUS_NO_TX                    // MBUS TX eats up lots of memory, OFF by default
+#  define OFF_LACROSSE_HMS_EMU          // if you like HMS emulation for LaCrosse temp devices
 #endif
 
 #ifdef CUL_V2
@@ -41,7 +61,7 @@
 #  define RFR_SHADOW                    // PROGMEM: 10b    RAM: -(TTY_BUFSIZE+3)
 #  define HAS_TX3
 #  define HAS_HOERMANN
-#  undef  HAS_FHT_8v
+#  undef  HAS_CC1101_RX_PLL_LOCK_CHECK_TASK_WAIT
 #endif
 
 #ifdef CUL_V2_HM
@@ -51,7 +71,6 @@
 #  define RCV_BUCKETS            2 
 #  undef  HAS_RF_ROUTER
 #  undef  HAS_FHT_80b
-#  undef  HAS_FHT_8v
 #  define FHTBUF_SIZE            0
 #  undef  BOARD_ID_STR
 #  define BOARD_ID_STR            "CUL_HM"
@@ -67,7 +86,6 @@
 #  define RCV_BUCKETS            2
 #  undef  HAS_RF_ROUTER
 #  undef  HAS_FHT_80b
-#  undef  HAS_FHT_8v
 #  define FHTBUF_SIZE            0
 #  undef  BOARD_ID_STR
 #  define BOARD_ID_STR            "CUL_MX"
@@ -130,9 +148,11 @@
 #  define CC1100_OUT_DDR        DDRD
 #  define CC1100_OUT_PORT       PORTD
 #  define CC1100_OUT_PIN        PD3
+#  define CC1100_OUT_IN         PIND
 #  define CC1100_IN_DDR		DDRD
 #  define CC1100_IN_PORT        PIND
 #  define CC1100_IN_PIN         PD2
+#  define CC1100_IN_IN          PIND
 #  define CC1100_INT		INT2
 #  define CC1100_INTVECT        INT2_vect
 #  define CC1100_ISC		ISC20

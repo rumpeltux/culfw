@@ -64,11 +64,22 @@
 #include "rf_moritz.h"
 #endif
 
+#ifdef HAS_MBUS
+#include "rf_mbus.h"
+#endif
+
+#ifdef HAS_SOMFY_RTS
+#include "somfy_rts.h"
+#endif
+
 const PROGMEM t_fntab fntab[] = {
 
   { 'm', getfreemem },
 
   { 'B', prepare_boot },
+#ifdef HAS_MBUS
+  { 'b', rf_mbus_func },
+#endif
   { 'C', ccreg },
   { 'F', fs20send },
 #ifdef HAS_VZ
@@ -116,6 +127,9 @@ const PROGMEM t_fntab fntab[] = {
 #endif
 #ifdef HAS_HELIOS
   { 'h', helios_func },
+#endif
+#ifdef HAS_SOMFY_RTS
+  { 'Y', somfy_rts_func },
 #endif
   { 'x', ccsetpa },
   { 'E', eth_func },
@@ -249,6 +263,9 @@ main(void)
 #ifdef HAS_HELIOS
     helios_task();
 #endif    
+#ifdef HAS_MBUS
+    rf_mbus_task();
+#endif
   }
 
 }

@@ -87,6 +87,8 @@
 
 #define HAS_USB                 1       // undef or define...1
 #define HAS_ETHERNET            1       // undef or define...1
+#define HAS_ETHERNET_KEEPALIVE  1
+#define ETHERNET_KEEPALIVE_TIME 30
 #define HAS_XRAM                1       // undef or define...1
 #define HAS_NTP                 1       // undef or define...1
 
@@ -94,6 +96,7 @@
 #define USB_BUFSIZE             64      // Must be a supported USB endpoint size
 #define HAS_FHT_8v                      // PROGMEM:  586b, RAM: 23b
 #define HAS_FHT_80b                     // PROGMEM: 1374b, RAM: 90b
+#define HAS_FHT_TF
 #define FHTBUF_SIZE            200      //                 RAM:200b
 #define HAS_RF_ROUTER           1       // PROGMEM: 1106b, RAM: 43b
 #define RCV_BUCKETS             4       //                 RAM: 25b / bucket
@@ -105,7 +108,12 @@
 #define HAS_ESA
 #define HAS_TX3
 #define HAS_INTERTECHNO
+#define HAS_TCM97001
 #define HAS_HOERMANN
+
+#define HAS_CC1101_RX_PLL_LOCK_CHECK_TASK_WAIT
+#define HAS_CC1101_PLL_LOCK_CHECK_MSG
+#define HAS_CC1101_PLL_LOCK_CHECK_MSG_SW
 
 #define BUSWARE_CUN
 

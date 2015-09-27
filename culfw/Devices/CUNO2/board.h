@@ -3,6 +3,7 @@
 
 #define HAS_FHT_8v                      // PROGMEM:  434b, RAM: 19b
 #define HAS_FHT_80b                     // PROGMEM: 1158b, RAM:  5b
+#define HAS_FHT_TF
 
 #undef  FULL_CC1100_PA                  // PROGMEM:  108b
 
@@ -26,10 +27,12 @@
 #define CC1100_OUT_DDR      DDRB
 #define CC1100_OUT_PORT         PORTB
 #define CC1100_OUT_PIN          1
+#define CC1100_OUT_IN           PINB
 
 #define CC1100_IN_DDR       DDRB
 #define CC1100_IN_PORT          PINB
 #define CC1100_IN_PIN           2
+#define CC1100_IN_IN            PINB
 #define CC1100_INT      INT2
 #define CC1100_INTVECT          INT2_vect
 #define CC1100_ISC      ISC20
@@ -65,11 +68,16 @@
 #define HAS_RAWSEND                   //
 #define HAS_FASTRF                    // PROGMEM:  468b  RAM:  1b
 #define HAS_ASKSIN
+#define HAS_ASKSIN_FUP
 #define HAS_ESA
 #define HAS_TX3
 #define HAS_INTERTECHNO
+#define HAS_TCM97001
 #define HAS_HOERMANN
 #define HAS_MORITZ
+#define HAS_CC1101_RX_PLL_LOCK_CHECK_TASK_WAIT
+#define HAS_CC1101_PLL_LOCK_CHECK_MSG
+#define HAS_CC1101_PLL_LOCK_CHECK_MSG_SW
 
 #define HAS_IRRX                                //IR Receiption
 #define F_INTERRUPTS            15625   // interrupts per second, min: 10000, max: 20000
@@ -106,6 +114,8 @@
 #define HAS_UART                1
 #define UART_BAUD_RATE          38400
 #define HAS_ETHERNET            1   
+#define HAS_ETHERNET_KEEPALIVE  1
+#define ETHERNET_KEEPALIVE_TIME 30
 #define HAS_NTP                 1   
 
 #define HAS_ONEWIRE         10      // OneWire Device Buffer, RAM: 10 * 8 Byte 
@@ -133,6 +143,10 @@
 #undef  HAS_HM485
 #undef  HAS_HELIOS
 #endif
+
+#define HAS_MBUS
+
+#define HAS_SOMFY_RTS		// Somfy RTS support
 
 #define TTY_BUFSIZE             1024
 

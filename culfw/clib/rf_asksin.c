@@ -6,6 +6,8 @@
 #include "delay.h"
 #include "rf_receive.h"
 #include "display.h"
+#include "cc1101_pllcheck.h"
+#include "clock.h"
 
 #include "rf_asksin.h"
 
@@ -39,6 +41,24 @@ const uint8_t PROGMEM ASKSIN_CFG[] = {
      0x3e, 0xc3
 };
 
+#ifdef HAS_ASKSIN_FUP
+const uint8_t PROGMEM ASKSIN_UPDATE_CFG[] = {
+     0x0B, 0x08,
+     0x10, 0x5B,
+     0x11, 0xF8,
+     0x15, 0x47,
+     0x19, 0x1D,
+     0x1A, 0x1C,
+     0x1B, 0xC7,
+     0x1C, 0x00,
+     0x1D, 0xB2,
+     0x21, 0xB6,
+     0x23, 0xEA,
+};
+
+static unsigned char asksin_update_mode = 0;
+#endif
+
 static void rf_asksin_reset_rx(void);
 
 void
@@ -63,6 +83,15 @@ rf_asksin_init(void)
     cc1100_writeReg( pgm_read_byte(&ASKSIN_CFG[i]),
                      pgm_read_byte(&ASKSIN_CFG[i+1]) );
   }
+
+#ifdef HAS_ASKSIN_FUP
+  if (asksin_update_mode) {
+    for (uint8_t i = 0; i < sizeof(ASKSIN_UPDATE_CFG); i += 2) {
+      cc1100_writeReg( pgm_read_byte(&ASKSIN_UPDATE_CFG[i]),
+                       pgm_read_byte(&ASKSIN_UPDATE_CFG[i+1]) );
+    }
+  }
+#endif
   
   ccStrobe( CC1100_SCAL );
 
@@ -86,8 +115,8 @@ rf_asksin_reset_rx(void)
 void
 rf_asksin_task(void)
 {
-  uint8_t enc[MAX_ASKSIN_MSG];
-  uint8_t dec[MAX_ASKSIN_MSG];
+  uint8_t msg[MAX_ASKSIN_MSG];
+  uint8_t this_enc, last_enc;
   uint8_t rssi;
   uint8_t l;
 
@@ -96,9 +125,9 @@ rf_asksin_task(void)
 
   // see if a CRC OK pkt has been arrived
   if (bit_is_set( CC1100_IN_PORT, CC1100_IN_PIN )) {
-    enc[0] = cc1100_readReg( CC1100_RXFIFO ) & 0x7f; // read len
+    msg[0] = cc1100_readReg( CC1100_RXFIFO ) & 0x7f; // read len
 
-    if (enc[0] >= MAX_ASKSIN_MSG) {
+    if (msg[0] >= MAX_ASKSIN_MSG) {
       // Something went horribly wrong, out of sync?
       rf_asksin_reset_rx();
       return;
@@ -107,8 +136,8 @@ rf_asksin_task(void)
     CC1100_ASSERT;
     cc1100_sendbyte( CC1100_READ_BURST | CC1100_RXFIFO );
     
-    for (uint8_t i=0; i<enc[0]; i++) {
-         enc[i+1] = cc1100_sendbyte( 0 );
+    for (uint8_t i=0; i<msg[0]; i++) {
+         msg[i+1] = cc1100_sendbyte( 0 );
     }
     
     rssi = cc1100_sendbyte( 0 );
@@ -120,25 +149,28 @@ rf_asksin_task(void)
       ccStrobe(CC1100_SRX);
     } while (cc1100_readReg(CC1100_MARCSTATE) != MARCSTATE_RX);
 
-    dec[0] = enc[0];
-    dec[1] = (~enc[1]) ^ 0x89;
+    last_enc = msg[1];
+    msg[1] = (~msg[1]) ^ 0x89;
     
-    for (l = 2; l < dec[0]; l++)
-         dec[l] = (enc[l-1] + 0xdc) ^ enc[l];
+    for (l = 2; l < msg[0]; l++) {
+         this_enc = msg[l];
+         msg[l] = (last_enc + 0xdc) ^ msg[l];
+         last_enc = this_enc;
+    }
     
-    dec[l] = enc[l] ^ dec[2];
+    msg[l] = msg[l] ^ msg[2];
     
     if (tx_report & REP_BINTIME) {
       
       DC('a');
-      for (uint8_t i=0; i<=dec[0]; i++)
-      DC( dec[i] );
+      for (uint8_t i=0; i<=msg[0]; i++)
+      DC( msg[i] );
          
     } else {
       DC('A');
       
-      for (uint8_t i=0; i<=dec[0]; i++)
-        DH2( dec[i] );
+      for (uint8_t i=0; i<=msg[0]; i++)
+        DH2( msg[i] );
       
       if (tx_report & REP_RSSI)
         DH2(rssi);
@@ -156,18 +188,23 @@ rf_asksin_task(void)
       ccStrobe( CC1100_SRX   );
       break;
   }
+
+#ifdef HAS_CC1101_RX_PLL_LOCK_CHECK_TASK_WAIT
+  cc1101_RX_check_PLL_wait_task();
+#endif
 }
 
 void
 asksin_send(char *in)
 {
-  uint8_t enc[MAX_ASKSIN_MSG];
-  uint8_t dec[MAX_ASKSIN_MSG];
+  uint8_t msg[MAX_ASKSIN_MSG];
+  uint8_t ctl;
   uint8_t l;
+  uint32_t ts1, ts2;
 
-  uint8_t hblen = fromhex(in+1, dec, MAX_ASKSIN_MSG-1);
+  uint8_t hblen = fromhex(in+1, msg, MAX_ASKSIN_MSG-1);
 
-  if ((hblen-1) != dec[0]) {
+  if ((hblen-1) != msg[0]) {
 //  DS_P(PSTR("LENERR\r\n"));
     return;
   }
@@ -178,21 +215,31 @@ asksin_send(char *in)
     my_delay_ms(3);             // 3ms: Found by trial and error
   }
 
-  // "crypt"
-  enc[0] = dec[0];
-  enc[1] = (~dec[1]) ^ 0x89;
+  ctl = msg[2];
 
-  for (l = 2; l < dec[0]; l++)
-    enc[l] = (enc[l-1] + 0xdc) ^ dec[l];
+  // "crypt"
+  msg[1] = (~msg[1]) ^ 0x89;
+
+  for (l = 2; l < msg[0]; l++)
+    msg[l] = (msg[l-1] + 0xdc) ^ msg[l];
   
-  enc[l] = dec[l] ^ dec[2];
+  msg[l] = msg[l] ^ ctl;
 
   // enable TX, wait for CCA
+  get_timestamp(&ts1);
   do {
     ccStrobe(CC1100_STX);
+    if (cc1100_readReg(CC1100_MARCSTATE) != MARCSTATE_TX) {
+      get_timestamp(&ts2);
+      if (((ts2 > ts1) && (ts2 - ts1 > ASKSIN_WAIT_TICKS_CCA)) ||
+          ((ts2 < ts1) && (ts1 + ASKSIN_WAIT_TICKS_CCA < ts2))) {
+        DS_P(PSTR("ERR:CCA\r\n"));
+        goto out;
+      }
+    }
   } while (cc1100_readReg(CC1100_MARCSTATE) != MARCSTATE_TX);
 
-  if (dec[2] & (1 << 4)) { // BURST-bit set?
+  if (ctl & (1 << 4)) { // BURST-bit set?
     // According to ELV, devices get activated every 300ms, so send burst for 360ms
     for(l = 0; l < 3; l++)
       my_delay_ms(120); // arg is uint_8, so loop
@@ -205,7 +252,7 @@ asksin_send(char *in)
   cc1100_sendbyte(CC1100_WRITE_BURST | CC1100_TXFIFO);
 
   for(uint8_t i = 0; i < hblen; i++) {
-    cc1100_sendbyte(enc[i]);
+    cc1100_sendbyte(msg[i]);
   }
 
   CC1100_DEASSERT;
@@ -214,6 +261,7 @@ asksin_send(char *in)
   while(cc1100_readReg( CC1100_MARCSTATE ) == MARCSTATE_TX)
     ;
 
+out:
   if (cc1100_readReg( CC1100_MARCSTATE ) == MARCSTATE_TXFIFO_UNDERFLOW) {
       ccStrobe( CC1100_SFTX  );
       ccStrobe( CC1100_SIDLE );
@@ -232,7 +280,16 @@ asksin_send(char *in)
 void
 asksin_func(char *in)
 {
+#ifndef HAS_ASKSIN_FUP
   if(in[1] == 'r') {                // Reception on
+#else
+  if((in[1] == 'r') || (in[1] == 'R')) {                // Reception on
+    if (in[1] == 'R') {
+      asksin_update_mode = 1;
+    } else {
+      asksin_update_mode = 0;
+    }
+#endif
     rf_asksin_init();
     asksin_on = 1;
 

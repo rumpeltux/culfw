@@ -10,6 +10,7 @@
 #define TYPE_HRM     'R'        // Hoermann
 #define TYPE_ESA     'S'
 #define TYPE_TX3     't'
+#define TYPE_TCM97001 's'
 
 #define TYPE_REVOLT	 'r'
 #define TYPE_IT  	 'i'
@@ -48,7 +49,6 @@
 #define LONG_PULSE
 #endif
 #endif
-
 
 void set_txreport(char *in);
 void set_txrestore(void);

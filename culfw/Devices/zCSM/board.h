@@ -3,6 +3,7 @@
 
 #define HAS_FHT_8v                      // PROGMEM:  434b, RAM: 19b
 #define HAS_FHT_80b                     // PROGMEM: 1158b, RAM:  5b
+#define HAS_FHT_TF
 
 #undef  FULL_CC1100_PA                  // PROGMEM:  108b
 
@@ -54,6 +55,10 @@
 #define HAS_MORITZ
 #define HAS_ESA
 #define HAS_INTERTECHNO
+#define HAS_TCM97001
+#define HAS_CC1101_RX_PLL_LOCK_CHECK_TASK_WAIT
+#define HAS_CC1101_PLL_LOCK_CHECK_MSG
+#define HAS_CC1101_PLL_LOCK_CHECK_MSG_SW
 
 #define BOARD_ID_STR            "CSM868"
 #define BOARD_ID_STR433         "CSM433"

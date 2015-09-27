@@ -19,7 +19,6 @@
 
 </head>
 
-
 <body>
   <div id="left">
     <img src="culfw.png">
@@ -44,8 +43,8 @@
       culfw is a GPL'd firmware for the <a
       href="http://shop.busware.de/advanced_search_result.php?keywords=CUL">CUL</a>
       family of devices.<br><br>
-      Current Version: (as of 2013-02-11) is <a
-      href="http://culfw.de/culfw-1.52.tar.gz">1.52</a>.
+      Current Version: (as of 2014-06-28) is <a
+      href="http://culfw.de/culfw-1.61.tar.gz">1.61</a>.
       See the <a href="CHANGED">CHANGED</a> file for current changes.<br>
       <br>
 
@@ -70,6 +69,7 @@
           <li>CUN (CC1101 USB Network, to the left)</li>
           <li>CUNO (CC1101 USB Network + OneWire, similar to the CUN)</li>
           <li>CUR (CC1101 USB Remote, prototype, to the right)</li>
+          <li>rpiaddon (CC1101 Raspberry PI AddOn board with OneWire, display and sensors)</li>
         </ul>
 
         At the heart of the CUL family of devices is the Texas Instruments
@@ -86,6 +86,7 @@
         CUNO: atmega644p / 2.0 kB / 64 kB<br>
         CUR V1: at90usb128 / 4.0 kB / 128 kB<br>
         CUR V2: at90usb64 / 2.0 kB / 64 kB<br>
+        rpiaddon: atmega644v / 4.0 kB / 64 kB<br>
         <br>
 
         From the program memory 4kB is used by the USB-Bootloader, and 4kB by
@@ -109,7 +110,7 @@
               supported.</li>
           <li>FHT: send/receive<br>
               Communication to the FHT80b and directly to the FHT8v is
-              supported.</li>
+              supported. Sending out FHT80TF data pakets to FHT80b.</li>
           <li>S300: receive<br>
               Examples of such devices: S300TH, KS300-2</li>
           <li>EM1000: receive<br>
@@ -121,7 +122,8 @@
               Some 868 Hoermann garage door openers.</li>
           <li>ESA2000: send and receive<br>
           <li>Lacrosse TX2/TX3: receive<br>
-          <li>Intertechno: send<br>
+	  <li>Intertechno: send<br>
+	  <li>Somfy RTS: send<br>
           </ul>
           <br>
         <li>
@@ -167,6 +169,10 @@
         Install the package avrdude and check the makefile for the correct port
         (look for AVRDUDE_PORT). Then execute "make usbprogram". 
         </li>
+
+      <li>rpiaddon:<br>
+        Install the package avrdude and then execute "make program". 
+        </li>
       </ul>
 
 
@@ -177,7 +183,7 @@
           To test it start "screen /dev/ttyACM0", and then type V<return>. The
           version string should appear. To use the device in fhem, define it as
           a CUL instance: "define MyCUL CUL /dev/ttyACM0 1234". See the fhem
-          documentation for details.</li>
+          documentation for details.<br>For the rpiaddon replace ttyACM0 with ttyAMA0.</li>
 
         <li>Windows:<br>
           Right-click on the docs/MyUSB_USBtoSerial.inf file, and install
@@ -200,8 +206,8 @@
     <ul>
       Hardware: <a href="http://www.busware.de">http://www.busware.de</a><br>
       Source (and compiled firmware): <a
-            href="http://culfw.de/culfw-1.52.tar.gz">
-            http://culfw.de/culfw-1.52.tar.gz</a><br>
+            href="http://culfw.de/culfw-1.61.tar.gz">
+            http://culfw.de/culfw-1.61.tar.gz</a><br>
       FAQ: <a href="http://culfw.de/faq.html">
             http://culfw.de/faq.html</a><br>
       Command reference: <a href="http://culfw.de/commandref.html">

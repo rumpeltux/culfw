@@ -5,6 +5,7 @@ OBJDIR = .
 
 SRC =           COC.c\
 		../../clib/cc1100.c                                  \
+		../../clib/cc1101_pllcheck.c                         \
 		../../clib/clock.c                                   \
 		../../clib/delay.c                                   \
 		../../clib/display.c                                 \
@@ -15,6 +16,11 @@ SRC =           COC.c\
 		../../clib/rf_receive.c                              \
 		../../clib/rf_router.c                               \
 		../../clib/rf_asksin.c                               \
+		../../clib/rf_mbus.c                                 \
+		../../clib/mbus/manchester.c                         \
+		../../clib/mbus/3outof6.c                            \
+		../../clib/mbus/mbus_packet.c                        \
+		../../clib/mbus/crc.c                                \
 		../../clib/rf_moritz.c                               \
 		../../clib/rf_rwe.c                                  \
 		../../clib/intertechno.c                             \
@@ -27,6 +33,11 @@ SRC =           COC.c\
 		../../clib/onewire.c                                  \
                 ../../clib/ds1339.c                                   \
 		../../clib/memory.c                                  \
+                ../../clib/rf_mbus.c                                 \
+                ../../clib/mbus/manchester.c                         \
+                ../../clib/mbus/3outof6.c                            \
+                ../../clib/mbus/mbus_packet.c                        \
+                ../../clib/mbus/crc.c                                \
 
 
 LUFA_OPTS  = -D USE_NONSTANDARD_DESCRIPTOR_NAMES
@@ -100,7 +111,7 @@ OBJ = $(SRC:%.c=$(OBJDIR)/%.o)
 
 all:
 	make TARGET=COC COCVERS=FULL mostly_clean build size
-	make TARGET=COC.radio_only COCVERS=RADIO_ONLY mostly_clean build size
+	make TARGET=COC_radio_only COCVERS=RADIO_ONLY mostly_clean build size
 
 build: elf hex eep lss sym
 
@@ -125,7 +136,7 @@ program_full: TARGET=COC
 program_full: COCVERS=FULL
 program_full: do_program
 
-program_radio_only: TARGET=COC.radio_only
+program_radio_only: TARGET=COC_radio_only
 program_radio_only: COCVERS=RADIO_ONLY
 program_radio_only: do_program
 
@@ -149,7 +160,7 @@ do_program:
 
 	$(AVRDUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_WRITE_FLASH)
 
-	if test -e /sys/bus/i2c/devices/0-0050/eeprom; then echo COC V1.1 $(COCVERS) `date +%F` > /sys/bus/i2c/devices/0-0050/eeprom; fi
+	if test -e /sys/bus/i2c/devices/0-0050/eeprom; then echo COC V1.2 $(COCVERS) `date +%F` > /sys/bus/i2c/devices/0-0050/eeprom; fi
 
 %.hex: %.elf
 	@echo $(MSG_FLASH) $@

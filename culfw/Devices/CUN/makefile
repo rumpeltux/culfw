@@ -10,6 +10,7 @@ OBJDIR = .
 SRC = $(TARGET).c                                                  \
 		../../clib/Descriptors.c                              \
 		../../clib/cc1100.c                                   \
+		../../clib/cc1101_pllcheck.c                          \
 		../../clib/cdcLUFA.c                                  \
 		../../clib/clock.c                                    \
 		../../clib/delay.c                                    \
@@ -86,7 +87,7 @@ CFLAGS += -fpack-struct
 CFLAGS += -fshort-enums
 CFLAGS += -finline-limit=20
 CFLAGS += -fno-strict-aliasing  # avr-uip needs it
-CFLAGS += -Wall
+CFLAGS += -Wall -Wno-strict-aliasing -Wno-unused-but-set-variable
 #CFLAGS += -Wstrict-prototypes
 CFLAGS += -Wundef
 #CFLAGS += -Wunreachable-code

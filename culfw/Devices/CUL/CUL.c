@@ -43,13 +43,31 @@
 #ifdef HAS_RWE
 #include "rf_rwe.h"
 #endif
+#ifdef HAS_RFNATIVE
+#include "rf_native.h"
+#endif
 #ifdef HAS_INTERTECHNO
 #include "intertechno.h"
+#endif
+#ifdef HAS_SOMFY_RTS
+#include "somfy_rts.h"
+#endif
+#ifdef HAS_MBUS
+#include "rf_mbus.h"
+#endif
+#ifdef HAS_KOPP_FC
+#include "kopp-fc.h"
+#endif
+#ifdef HAS_BELFOX
+#include "belfox.h"
 #endif
 
 const PROGMEM t_fntab fntab[] = {
 
   { 'B', prepare_boot },
+#ifdef HAS_MBUS
+  { 'b', rf_mbus_func },
+#endif
   { 'C', ccreg },
   { 'F', fs20send },
 #ifdef HAS_INTERTECHNO
@@ -61,13 +79,25 @@ const PROGMEM t_fntab fntab[] = {
 #ifdef HAS_MORITZ
   { 'Z', moritz_func },
 #endif
+#ifdef HAS_RFNATIVE
+  { 'N', native_func },
+#endif
 #ifdef HAS_RWE
   { 'E', rwe_func },
+#endif
+#ifdef HAS_KOPP_FC
+  { 'k', kopp_fc_func },
 #endif
 #ifdef HAS_RAWSEND
   { 'G', rawsend },
   { 'M', em_send },
   { 'K', ks_send },
+#endif
+#ifdef HAS_UNIROLL
+  { 'U', ur_send },
+#endif
+#ifdef HAS_SOMFY_RTS
+  { 'Y', somfy_rts_func },
 #endif
   { 'R', read_eeprom },
   { 'T', fhtsend },
@@ -81,6 +111,9 @@ const PROGMEM t_fntab fntab[] = {
 #endif
 #ifdef HAS_MEMFN
   { 'm', getfreemem },
+#endif
+#ifdef HAS_BELFOX
+  { 'L', send_belfox },
 #endif
   { 'l', ledfunc },
   { 't', gettime },
@@ -114,7 +147,7 @@ start_bootloader(void)
 int
 main(void)
 {
-  wdt_enable(WDTO_2S); 
+  wdt_enable(WDTO_2S);
   clock_prescale_set(clock_div_1);
 
   MARK433_PORT |= _BV( MARK433_BIT ); // Pull 433MHz marker
@@ -130,7 +163,7 @@ main(void)
 
   // Setup the timers. Are needed for watchdog-reset
   OCR0A  = 249;                            // Timer0: 0.008s = 8MHz/256/250
-  TCCR0B = _BV(CS02);       
+  TCCR0B = _BV(CS02);
   TCCR0A = _BV(WGM01);
   TIMSK0 = _BV(OCIE0A);
 
@@ -175,5 +208,15 @@ main(void)
 #ifdef HAS_RWE
     rf_rwe_task();
 #endif
+#ifdef HAS_RFNATIVE
+    native_task();
+#endif
+#ifdef HAS_KOPP_FC
+    kopp_fc_task();
+#endif
+#ifdef HAS_MBUS
+    rf_mbus_task();
+#endif
+
   }
 }

@@ -5,8 +5,10 @@ OBJDIR = .
 SRC =           CUL.c\
 		../../clib/Descriptors.c                             \
 		../../clib/cc1100.c                                  \
+		../../clib/cc1101_pllcheck.c                         \
 		../../clib/cdcLUFA.c                                 \
 		../../clib/clock.c                                   \
+		../../clib/belfox.c                                  \
 		../../clib/delay.c                                   \
 		../../clib/display.c                                 \
 		../../clib/stringfunc.c                              \
@@ -18,12 +20,16 @@ SRC =           CUL.c\
 		../../clib/rf_asksin.c                               \
 		../../clib/rf_moritz.c                               \
 		../../clib/rf_rwe.c                                  \
+		../../clib/rf_native.c                               \
 		../../clib/intertechno.c                             \
+		../../clib/somfy_rts.c    			     \
+		../../clib/kopp-fc.c				     \
 		../../clib/fht.c                                     \
 		../../clib/fastrf.c                                  \
 		../../clib/ttydata.c                                 \
 		../../clib/spi.c                                     \
 		../../clib/memory.c                                  \
+		../../clib/lacrosse.c                                \
 		../../lufa/Drivers/USB/LowLevel/DevChapter9.c        \
 		../../lufa/Drivers/USB/LowLevel/Endpoint.c           \
 		../../lufa/Drivers/USB/LowLevel/Host.c               \
@@ -67,7 +73,7 @@ ALL_CFLAGS = -mmcu=$(MCU) -I. $(CFLAGS) $(GENDEPFLAGS)
 
 EXTMEMOPTS =
 LDFLAGS = -Wl,-Map=$(TARGET).map,--cref
-LDFLAGS += -Wl,--relax 
+LDFLAGS += -Wl,--relax
 LDFLAGS += -Wl,--gc-sections
 LDFLAGS += $(EXTMEMOPTS)
 
@@ -92,6 +98,9 @@ MSG_CLEANING = Cleaning project:
 
 OBJ = $(SRC:%.c=$(OBJDIR)/%.o)
 
+ifeq ($(TARGET), CUL_V3)
+SRC += ../../clib/rf_mbus.c ../../clib/mbus/manchester.c ../../clib/mbus/3outof6.c ../../clib/mbus/mbus_packet.c ../../clib/mbus/crc.c
+endif
 
 all:
 	make TARGET=CUL_V2 MCU=at90usb162 mostly_clean build size
@@ -172,7 +181,7 @@ do_usbprogram:
 
 $(OBJDIR)/%.o : %.c
 	@echo $(MSG_COMPILING) $<
-	@$(CC) -c $(ALL_CFLAGS) $< -o $@ 
+	@$(CC) -c $(ALL_CFLAGS) $< -o $@
 
 mostly_clean:
 	@echo $(MSG_CLEANING)

@@ -14,6 +14,7 @@ OBJDIR = .
 
 SRC = $(TARGET).c                                                    \
 		../../clib/cc1100.c                                  \
+		../../clib/cc1101_pllcheck.c                         \
 		../../clib/clock.c                                   \
 		../../clib/delay.c                                   \
 		../../clib/display.c                                 \
@@ -54,6 +55,12 @@ SRC = $(TARGET).c                                                    \
 		../../clib/dmx.c                                      \
 		../../clib/intertechno.c                              \
 		../../clib/hm485.c                                      \
+                ../../clib/rf_mbus.c                                 \
+                ../../clib/mbus/manchester.c                         \
+                ../../clib/mbus/3outof6.c                            \
+                ../../clib/mbus/mbus_packet.c                        \
+                ../../clib/mbus/crc.c                                \
+		../../clib/somfy_rts.c					\
 		
 OPT = s
 DEBUG = dwarf-2
@@ -74,7 +81,7 @@ CFLAGS += -ffunction-sections
 CFLAGS += -fpack-struct
 CFLAGS += -fshort-enums
 CFLAGS += -finline-limit=20
-CFLAGS += -Wall
+CFLAGS += -Wall -Wno-strict-aliasing -Wno-unused-but-set-variable
 CFLAGS += -Wstrict-prototypes
 CFLAGS += -Wundef
 #CFLAGS += -Wunreachable-code

@@ -8,6 +8,9 @@
 #include "fncollection.h"
 #include "cc1100.h"
 
+#include "rf_asksin.h"  // asksin_on
+#include "rf_moritz.h"  // moritz_on
+
 #ifdef HAS_MORITZ
 #include "rf_moritz.h"
 #endif
@@ -272,7 +275,8 @@ ccTX(void)
   // Going from RX to TX does not work if there was a reception less than 0.5
   // sec ago. Due to CCA? Using IDLE helps to shorten this period(?)
   ccStrobe(CC1100_SIDLE);
-  while(cnt-- && (ccStrobe( CC1100_STX ) & 0x70) != 2)
+  while(cnt-- &&
+        (ccStrobe(CC1100_STX) & CC1100_STATUS_STATE_BM) != CC1100_STATE_TX)
     my_delay_us(10);
 }
 
@@ -282,7 +286,8 @@ ccRX(void)
 {
   uint8_t cnt = 0xff;
 
-  while(cnt-- && (ccStrobe( CC1100_SRX ) & 0x70) != 1)
+  while(cnt-- &&
+        (ccStrobe(CC1100_SRX) & CC1100_STATUS_STATE_BM) != CC1100_STATE_RX)
     my_delay_us(10);
   EIMSK |= _BV(CC1100_INT);
 
@@ -359,7 +364,16 @@ set_ccoff(void)
 #else
   ccStrobe(CC1100_SIDLE);
 #endif
+
   cc_on = 0;
+
+#ifdef HAS_ASKSIN
+  asksin_on = 0;
+#endif
+
+#ifdef HAS_MORITZ
+  moritz_on = 0;
+#endif
 }
 
 void
@@ -367,4 +381,12 @@ set_ccon(void)
 {
   ccInitChip(EE_CC1100_CFG);
   cc_on = 1;
+
+#ifdef HAS_ASKSIN
+  asksin_on = 0;
+#endif
+
+#ifdef HAS_MORITZ
+  moritz_on = 0;
+#endif
 }
