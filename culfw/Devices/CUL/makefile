@@ -21,6 +21,7 @@ SRC =           CUL.c\
 		../../clib/rf_moritz.c                               \
 		../../clib/rf_rwe.c                                  \
 		../../clib/rf_native.c                               \
+		../../clib/rf_zwave.c                                \
 		../../clib/intertechno.c                             \
 		../../clib/somfy_rts.c    			     \
 		../../clib/kopp-fc.c				     \
