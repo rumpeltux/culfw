@@ -43,12 +43,16 @@ const uint8_t PROGMEM ZWAVE_CFG[] = {
   CC1100_PATABLE,   0x50  // 3E
 };
 
+void
+zccRX(void)
+{
+  ccRX();
+  EIMSK &= ~_BV(CC1100_INT);                 // disable INT - we'll poll...
+}
 
 void
 rf_zwave_init(void)
 {
-
-  EIMSK &= ~_BV(CC1100_INT);                 // disable INT - we'll poll...
   SET_BIT( CC1100_CS_DDR, CC1100_CS_PIN );
 
   CC1100_DEASSERT;                           // Toggle chip select signal
@@ -69,24 +73,7 @@ rf_zwave_init(void)
   ccStrobe( CC1100_SCAL );
 
   my_delay_ms(4);
-
-  uint8_t cnt = 0xff;
-  do {
-    ccStrobe(CC1100_SRX);
-    my_delay_us(10);
-  } while (cc1100_readReg(CC1100_MARCSTATE) != MARCSTATE_RX && cnt--);
-  DC('z');
-  DC('i');
-  DNL();
-}
-
-static void
-rf_zwave_reset_rx(void)
-{
-  ccStrobe( CC1100_SFRX  );
-  ccStrobe( CC1100_SIDLE );
-  ccStrobe( CC1100_SNOP  );
-  ccStrobe( CC1100_SRX   );
+  zccRX();
 }
 
 void
@@ -101,52 +88,41 @@ rf_zwave_task(void)
 
     CC1100_ASSERT;
     cc1100_sendbyte( CC1100_READ_BURST | CC1100_RXFIFO );
-    for(uint8_t i=0; i<8; i++) {
+    for(uint8_t i=0; i<8; i++) { // FIFO RX threshold is 8
        msg[i] = cc1100_sendbyte( 0 ) ^ 0xff;
     }
     CC1100_DEASSERT;
 
     uint8_t len=msg[7], off=8;
-    if(len < 8 || len > MAX_ZWAVE_MSG) {
-      rf_zwave_reset_rx();
-      return;
-    }
+    if(len >= 8 && len <= MAX_ZWAVE_MSG) {
 
-    cc1100_writeReg(CC1100_PKTLEN, len );
-    for(uint8_t mwait=110; mwait > 0; mwait--) { // 52 bytes @ 40kBaud
-      my_delay_us(100);
-      uint8_t flen = cc1100_readReg( CC1100_RXBYTES );
-      if(flen == 0)
-        continue;
-      CC1100_ASSERT;
-      cc1100_sendbyte( CC1100_READ_BURST | CC1100_RXFIFO );
-      if(off+flen > len)
-        flen = len-off;
-      for(uint8_t i=0; i<flen; i++) {
-         msg[off++] = cc1100_sendbyte( 0 ) ^ 0xff;
+      cc1100_writeReg(CC1100_PKTLEN, len );
+      for(uint8_t mwait=MAX_ZWAVE_MSG-8; mwait > 0; mwait--) {
+        my_delay_us(220); // 1 byte @ 40kBaud + 10% margin
+        uint8_t flen = cc1100_readReg( CC1100_RXBYTES );
+        if(flen == 0)
+          continue;
+        CC1100_ASSERT;
+        cc1100_sendbyte( CC1100_READ_BURST | CC1100_RXFIFO );
+        if(off+flen > len)
+          flen = len-off;
+        for(uint8_t i=0; i<flen; i++)
+          msg[off++] = cc1100_sendbyte( 0 ) ^ 0xff;
+        CC1100_DEASSERT;
+        if(off >= len)
+          break;
       }
-      CC1100_DEASSERT;
-      if(off >= len)
-        break;
-    }
 
-    uint8_t cnt = 0xff;
-    do {
-      ccStrobe(CC1100_SRX);
-      my_delay_us(10);
-    } while (cc1100_readReg(CC1100_MARCSTATE) != MARCSTATE_RX && cnt--);
+      zccRX();
 
-    uint8_t cs = 0xff;          // CheckSum
-    for(uint8_t i=0; i<len-1; i++)
-      cs ^= msg[i];
-    if(cs == msg[len-1]) {
-      DC('z');
+      DC('z');    // Do the checksum in FHEM
       for(uint8_t i=0; i<len; i++)
         DH2(msg[i]);
       DNL();
+
+      cc1100_writeReg(CC1100_PKTLEN, 0xff );
     }
 
-    cc1100_writeReg(CC1100_PKTLEN, 0xff );
   }
 
   switch(cc1100_readReg( CC1100_MARCSTATE )) {
@@ -161,6 +137,30 @@ rf_zwave_task(void)
 }
 
 void
+zwave_send(char *in)
+{
+  uint8_t msg[MAX_ZWAVE_MSG];
+  uint8_t hblen = fromhex(in+1, msg, MAX_ZWAVE_MSG);
+
+  LED_ON();
+  cc1100_writeReg(CC1100_PKTLEN, hblen);
+  ccTX();
+
+  CC1100_ASSERT;
+  cc1100_sendbyte(CC1100_WRITE_BURST | CC1100_TXFIFO);
+  for(uint8_t i = 0; i < hblen; i++)
+    cc1100_sendbyte(msg[i] ^ 0xff);
+  CC1100_DEASSERT;
+
+  while(cc1100_readReg( CC1100_MARCSTATE ) == MARCSTATE_TX)
+    ;
+  cc1100_writeReg(CC1100_PKTLEN, 0xff);
+
+  zccRX();
+  LED_OFF();
+}
+
+void
 zwave_func(char *in)
 {
   if(in[1] == 'r') {                // Reception on
@@ -168,7 +168,7 @@ zwave_func(char *in)
     zwave_on = 1;
 
   } else if(in[1] == 's') {         // Send
-    //zwave_send(in+1);
+    zwave_send(in);
 
   } else {                          // Off
     zwave_on = 0;
