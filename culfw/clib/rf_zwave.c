@@ -10,12 +10,16 @@
 extern void gettime(void); // debugging
 
 uint8_t zwave_on=0;
+uint8_t zwave_100kHz=0; // 0: 40kHz, 1:100kHz
 uint8_t zwave_hcid[5];  // HomeId (4byte) + CtrlNodeId (1byte)
 void zwave_doSend(uint8_t *msg, uint8_t hblen);
 
-#define MAX_ZWAVE_MSG 60
+#define MAX_ZWAVE_MSG 64
+uint8_t sMsg[MAX_ZWAVE_MSG];
+uint32_t sStamp;
 
 const uint8_t PROGMEM ZWAVE_CFG[] = {
+  /* 40k */
   CC1100_IOCFG2,    0x01, // 00 GDO2 pin config:               00:FIFOTHR or end
   CC1100_IOCFG0,    0x2e, // 02 GDO0 pin config:                  2e:three state
   CC1100_FIFOTHR,   0x01, // 03 FIFO Threshhold                   01:RX:8, TX:61
@@ -25,6 +29,7 @@ const uint8_t PROGMEM ZWAVE_CFG[] = {
   CC1100_PKTCTRL1,  0x00, // 07 Packet automation control         00:no crc/addr
   CC1100_PKTCTRL0,  0x00, // 08 Packet automation control         00:fixlen,fifo
   CC1100_FSCTRL1,   0x06, // 0B Frequency synthesizer control
+
   CC1100_FREQ2,     0x21, // 0D Frequency control word, high byte 868.4MHz
   CC1100_FREQ1,     0x66, // 0E Frequency control word, middle byte
   CC1100_FREQ0,     0x66, // 0F Frequency control word, low byte
@@ -32,7 +37,8 @@ const uint8_t PROGMEM ZWAVE_CFG[] = {
   CC1100_MDMCFG3,   0x93, // 11 Modem configuration               dr 40kHz
   CC1100_MDMCFG2,   0x06, // 12 Modem configuration               2-FSK/16sync
   CC1100_MDMCFG1,   0x72, // 13 Modem configuration               24 preamble
-  CC1100_DEVIATN,   0x35, // 15 Modem deviation setting           dev:4394Hz
+  CC1100_DEVIATN,   0x35, // 15 Modem deviation setting
+
   CC1100_MCSM0,     0x18, // 18 Main Radio Cntrl State Machine config
   CC1100_FOCCFG,    0x16, // 19 Frequency Offset Compensation config
   CC1100_AGCCTRL2,  0x03, // 1B AGC control
@@ -40,12 +46,22 @@ const uint8_t PROGMEM ZWAVE_CFG[] = {
   CC1100_FSCAL2,    0x2a, // 24 Frequency synthesizer calibration
   CC1100_FSCAL1,    0x00, // 25 Frequency synthesizer calibration
   CC1100_FSCAL0,    0x1f, // 26 Frequency synthesizer calibration
-  CC1100_TEST2,     0x81, // 2C Various test settings
-  CC1100_TEST1,     0x35, // 2D Various test settings
-  CC1100_TEST0,     0x09, // 2E Various test settings
-  // CC1100_LQI     0x7f, // 33 LingQuality Estimate - READ ONLY
-  CC1100_PATABLE,   0x50  // 3E
+  CC1100_PATABLE,   0x50, // 3E
+
+  /* 100k changes */
+#define ZWAVE_100k_SIZE (8*2)
+  CC1100_FREQ2,     0x21, // 0D Frequency control word, high byte 869.5 MHz
+  CC1100_FREQ1,     0x74, // 0E
+  CC1100_FREQ0,     0xAD, // 0F
+  CC1100_MDMCFG4,   0x5b, // 10 Modem configuration               bW 325kHz
+  CC1100_MDMCFG3,   0xf8, // 11 Modem configuration               dr 100kBaud
+  CC1100_MDMCFG2,   0x06, // 12 Modem configuration               GFSK/16sync
+  CC1100_MDMCFG1,   0x72, // 13 Modem configuration               24 preamble
+  CC1100_DEVIATN,   0x47  // 15 Modem deviation setting           dev:47 kHz ->
+
 };
+
+
 
 void
 zccRX(void)
@@ -69,7 +85,8 @@ rf_zwave_init(void)
   ccStrobe( CC1100_SRES );
   my_delay_us(100);
 
-  for (uint8_t i = 0; i < sizeof(ZWAVE_CFG); i += 2) {
+  uint8_t len = sizeof(ZWAVE_CFG) - (zwave_100kHz ? 0 : ZWAVE_100k_SIZE);
+  for (uint8_t i = 0; i < len; i += 2) {
     cc1100_writeReg( pgm_read_byte(&ZWAVE_CFG[i]),
                      pgm_read_byte(&ZWAVE_CFG[i+1]) );
   }
@@ -196,17 +213,17 @@ zwave_doSend(uint8_t *msg, uint8_t hblen)
 void
 zwave_send(char *in)
 {
-  uint8_t msg[MAX_ZWAVE_MSG];
-  uint8_t hblen = fromhex(in+2, msg, MAX_ZWAVE_MSG);
-  zwave_doSend(msg, hblen);
+  uint8_t hblen = fromhex(in+2, sMsg, MAX_ZWAVE_MSG);
+  zwave_doSend(sMsg, hblen);
 }
 
 void
 zwave_func(char *in)
 {
   if(in[1] == 'r' || in[1] == 'm') {// Reception on: receive or monitor
-    rf_zwave_init();
+    zwave_100kHz = (in[2] == '1' ? 1 : 0);
     zwave_on = in[1];
+    rf_zwave_init();
 
   } else if(in[1] == 's') {         // Send
     zwave_send(in);
