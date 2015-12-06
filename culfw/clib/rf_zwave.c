@@ -5,16 +5,16 @@
 #include "cc1100.h"
 #include "delay.h"
 #include "display.h"
-
+#include "clock.h"
 #include "rf_zwave.h"
-extern void gettime(void); // debugging
+
+#define MAX_ZWAVE_MSG 64
+
+void zwave_doSend(uint8_t *msg, uint8_t hblen);
 
 uint8_t zwave_on=0;
 uint8_t zwave_100kHz=0; // 0: 40kHz, 1:100kHz
 uint8_t zwave_hcid[5];  // HomeId (4byte) + CtrlNodeId (1byte)
-void zwave_doSend(uint8_t *msg, uint8_t hblen);
-
-#define MAX_ZWAVE_MSG 64
 uint8_t sMsg[MAX_ZWAVE_MSG];
 uint32_t sStamp;
 
@@ -232,6 +232,8 @@ zwave_func(char *in)
     if(in[2]) {
       fromhex(in+2, zwave_hcid, 5);
     } else {
+      DC(zwave_on);
+      DC(' ');
       DH2(zwave_hcid[0]);
       DH2(zwave_hcid[1]);
       DH2(zwave_hcid[2]);
