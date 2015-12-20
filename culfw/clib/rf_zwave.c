@@ -50,15 +50,14 @@ const uint8_t PROGMEM ZWAVE_CFG[] = {
 
   /* 100k changes */
 #define ZWAVE_100k_SIZE (8*2)
-  CC1100_FREQ2,     0x21, // 0D Frequency control word, high byte 869.5 MHz
+  CC1100_FREQ2,     0x21, // 0D Frequency control word, high byte 869.85 MHz
   CC1100_FREQ1,     0x74, // 0E
   CC1100_FREQ0,     0xAD, // 0F
-  CC1100_MDMCFG4,   0x5b, // 10 Modem configuration               bW 325kHz
+  CC1100_MDMCFG4,   0x4b, // 10 Modem configuration               bW 406kHz
   CC1100_MDMCFG3,   0xf8, // 11 Modem configuration               dr 100kBaud
   CC1100_MDMCFG2,   0x06, // 12 Modem configuration               GFSK/16sync
   CC1100_MDMCFG1,   0x72, // 13 Modem configuration               24 preamble
-  CC1100_DEVIATN,   0x47  // 15 Modem deviation setting           dev:47 kHz ->
-
+  CC1100_DEVIATN,   0x41  // 15 Modem deviation setting           dev:28 kHz
 };
 
 
@@ -149,12 +148,12 @@ rf_zwave_task(void)
     uint8_t flen = cc1100_readReg( CC1100_RXBYTES );
     if(flen == 0)
       continue;
-    CC1100_ASSERT;
-    cc1100_sendbyte( CC1100_READ_BURST | CC1100_RXFIFO );
     if(off+flen > len) {
       rf_zwave_init();
       return;
     }
+    CC1100_ASSERT;
+    cc1100_sendbyte( CC1100_READ_BURST | CC1100_RXFIFO );
     for(uint8_t i=0; i<flen; i++)
       msg[off++] = cc1100_sendbyte( 0 ) ^ 0xff;
     CC1100_DEASSERT;
@@ -233,6 +232,7 @@ zwave_func(char *in)
       fromhex(in+2, zwave_hcid, 5);
     } else {
       DC(zwave_on);
+      DC(zwave_100kHz ? '1' : '4');
       DC(' ');
       DH2(zwave_hcid[0]);
       DH2(zwave_hcid[1]);
