@@ -17,7 +17,7 @@ void zwave_doSend(uint8_t *msg, uint8_t hblen);
 #define DRATE_9600 '9'
 
 uint8_t zwave_on = 0;
-uint8_t zwave_drate = DRATE_40k;
+uint8_t zwave_drate;
 uint8_t zwave_hcid[5];  // HomeId (4byte) + CtrlNodeId (1byte)
 uint8_t sMsg[MAX_ZWAVE_MSG];
 uint32_t sStamp;
@@ -25,7 +25,7 @@ uint32_t sStamp;
 // See also: ZAD-12837-1, ITU-G.9959
 /*
 bWidth:
-26000000/(8*(4+0)*2^3) = 101.5   # c
+26000000/(8*(4+0)*2^3) = 101.5   # c -> better reception
 26000000/(8*(4+1)*2^1) = 325.0   # 5
 26000000/(8*(4+0)*2^1) = 406.2   # 4
 
@@ -56,8 +56,8 @@ const uint8_t PROGMEM ZWAVE_CFG_9600[] = {
   CC1100_FREQ2,     0x21, // 0D Frequency control word, high byte 868.4MHz
   CC1100_FREQ1,     0x66, // 0E Frequency control word, middle byte
   CC1100_FREQ0,     0x66, // 0F Frequency control word, low byte
-  CC1100_MDMCFG4,   0x57, // 10 Modem configuration               bW 325kHz
-  CC1100_MDMCFG3,   0x83, // 11 Modem configuration               dr 4798
+  CC1100_MDMCFG4,   0x59, // 10 Modem configuration               bW 325kHz
+  CC1100_MDMCFG3,   0x83, // 11 Modem configuration               dr 9.6k
   CC1100_MDMCFG2,   0x0e, // 12 Modem configuration    Manchester/2-FSK/16sync
   CC1100_MDMCFG1,   0x52, // 13 Modem configuration               preamble 12
   CC1100_DEVIATN,   0x35, // 15 Modem deviation setting           dev:21kHz
@@ -86,8 +86,8 @@ const uint8_t PROGMEM ZWAVE_CFG_40k[] = {
   CC1100_FREQ2,     0x21, // 0D Frequency control word, high byte 868.4MHz
   CC1100_FREQ1,     0x66, // 0E Frequency control word, middle byte
   CC1100_FREQ0,     0x66, // 0F Frequency control word, low byte
-  CC1100_MDMCFG4,   0x5a, // 10 Modem configuration               bW 325kHz
-  CC1100_MDMCFG3,   0x93, // 11 Modem configuration               dr 39970
+  CC1100_MDMCFG4,   0xca, // 10 Modem configuration               bW 101kHz
+  CC1100_MDMCFG3,   0x93, // 11 Modem configuration               dr 40k
   CC1100_MDMCFG2,   0x06, // 12 Modem configuration               2-FSK/16sync
   CC1100_MDMCFG1,   0x52, // 13 Modem configuration               preamble 12
   CC1100_DEVIATN,   0x35, // 15 Modem deviation setting           dev:21kHz
@@ -117,7 +117,7 @@ const uint8_t PROGMEM ZWAVE_CFG_100k[] = {
   CC1100_FREQ1,     0x74, // 0E
   CC1100_FREQ0,     0xAD, // 0F
   CC1100_MDMCFG4,   0x4b, // 10 Modem configuration               bW 406kHz
-  CC1100_MDMCFG3,   0xf8, // 11 Modem configuration               dr 99975 Hz
+  CC1100_MDMCFG3,   0xf8, // 11 Modem configuration               dr 100k
   CC1100_MDMCFG2,   0x16, // 12 Modem configuration               GFSK/16sync
   CC1100_MDMCFG1,   0x72, // 13 Modem configuration               24 preamble
   CC1100_DEVIATN,   0x41, // 15 Modem deviation setting           dev:28 kHz
@@ -235,16 +235,22 @@ rf_zwave_task(void)
   uint8_t len=msg[7], off=8;
   if(len < 9 || len > MAX_ZWAVE_MSG) {
     rf_zwave_init();
+//DC('l'); DNL();
     return;
   }
 
   cc1100_writeReg(CC1100_PKTLEN, len );
+
+  // 1 byte @ dataRate + 10% margin
+  uint16_t delay = (zwave_drate == DRATE_100k ? 90 :
+                   (zwave_drate == DRATE_40k ? 220 : 920));
   for(uint8_t mwait=MAX_ZWAVE_MSG-8; mwait > 0; mwait--) {
-    my_delay_us(220); // 1 byte @ 40kBaud + 10% margin
+    my_delay_us(delay);
     uint8_t flen = cc1100_readReg( CC1100_RXBYTES );
     if(flen == 0)
       continue;
     if(off+flen > len) {
+//DC('L'); DNL();
       rf_zwave_init();
       return;
     }
@@ -273,6 +279,8 @@ rf_zwave_task(void)
     for(uint8_t i=0; i<len; i++)
       DH2(msg[i]);
     DNL();
+  } else {
+//DC('C'); DNL();
   }
 
   if(zwave_on == 'r' && isOk &&
