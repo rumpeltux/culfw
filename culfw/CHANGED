@@ -1,5 +1,6 @@
 Version 1.66 (2015-11-29)
 - CULV3/V4: add ZWave receive
+- ZWave: receive+send @ 40k, 100k
 - intertechno: modify interval
 
 Version 1.65 (2015-05-14)
