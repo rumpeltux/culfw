@@ -36,9 +36,14 @@ dRate:
 26000000/(2^28)*(256+131)*(2^ 8) =  9596
 26000000/(2^28)*(256+131)*(2^ 7) =  4798
 
-deviation
+deviation:
 26000000/(2^17)*(8+5)*(2^3) = 20629.8
 26000000/(2^17)*(8+1)*(2^4) = 28564.4
+
+freq:
+26000000/(2^16)*0x216666 = 868399.841
+26000000/(2^16)*0x2174ad = 869849.884
+26000000/(2^16)*0x216699 = 868420.074
 */
 
 
@@ -47,18 +52,18 @@ const uint8_t PROGMEM ZWAVE_CFG_9600[] = {
   CC1100_IOCFG0,    0x2e, // 02 GDO0 pin config:                  2e:three state
   CC1100_FIFOTHR,   0x01, // 03 FIFO Threshhold                   01:RX:8, TX:61
   CC1100_SYNC1,     0xaa, // 04 Sync word, high byte
-  CC1100_SYNC0,     0x0f, // 05 Sync word, low byte
+  CC1100_SYNC0,     0xf0, // 05 Sync word, low byte
   CC1100_PKTLEN,    0xff, // 06 Packet length
   CC1100_PKTCTRL1,  0x00, // 07 Packet automation control         00:no crc/addr
   CC1100_PKTCTRL0,  0x00, // 08 Packet automation control         00:fixlen,fifo
   CC1100_FSCTRL1,   0x06, // 0B Frequency synthesizer control
 
-  CC1100_FREQ2,     0x21, // 0D Frequency control word, high byte 868.4MHz
+  CC1100_FREQ2,     0x21, // 0D Frequency control word, high byte 868.42MHz
   CC1100_FREQ1,     0x66, // 0E Frequency control word, middle byte
-  CC1100_FREQ0,     0x66, // 0F Frequency control word, low byte
+  CC1100_FREQ0,     0x99, // 0F Frequency control word, low byte
   CC1100_MDMCFG4,   0x59, // 10 Modem configuration               bW 325kHz
-  CC1100_MDMCFG3,   0x83, // 11 Modem configuration               dr 9.6k
-  CC1100_MDMCFG2,   0x0e, // 12 Modem configuration    Manchester/2-FSK/16sync
+  CC1100_MDMCFG3,   0x83, // 11 Modem configuration               dr 19200
+  CC1100_MDMCFG2,   0x1e, // 12 Modem configuration    Manchester/G-FSK/16sync
   CC1100_MDMCFG1,   0x52, // 13 Modem configuration               preamble 12
   CC1100_DEVIATN,   0x35, // 15 Modem deviation setting           dev:21kHz
 
@@ -77,7 +82,7 @@ const uint8_t PROGMEM ZWAVE_CFG_40k[] = {
   CC1100_IOCFG0,    0x2e, // 02 GDO0 pin config:                  2e:three state
   CC1100_FIFOTHR,   0x01, // 03 FIFO Threshhold                   01:RX:8, TX:61
   CC1100_SYNC1,     0xaa, // 04 Sync word, high byte
-  CC1100_SYNC0,     0x0f, // 05 Sync word, low byte
+  CC1100_SYNC0,     0x0f, // 05 Sync word, low byte               inverted
   CC1100_PKTLEN,    0xff, // 06 Packet length
   CC1100_PKTCTRL1,  0x00, // 07 Packet automation control         00:no crc/addr
   CC1100_PKTCTRL0,  0x00, // 08 Packet automation control         00:fixlen,fifo
@@ -107,7 +112,7 @@ const uint8_t PROGMEM ZWAVE_CFG_100k[] = {
   CC1100_IOCFG0,    0x2e, // 02 GDO0 pin config:                  2e:three state
   CC1100_FIFOTHR,   0x01, // 03 FIFO Threshhold                   01:RX:8, TX:61
   CC1100_SYNC1,     0xaa, // 04 Sync word, high byte
-  CC1100_SYNC0,     0x0f, // 05 Sync word, low byte
+  CC1100_SYNC0,     0x0f, // 05 Sync word, low byte               inverted
   CC1100_PKTLEN,    0xff, // 06 Packet length
   CC1100_PKTCTRL1,  0x00, // 07 Packet automation control         00:no crc/addr
   CC1100_PKTCTRL0,  0x00, // 08 Packet automation control         00:fixlen,fifo
