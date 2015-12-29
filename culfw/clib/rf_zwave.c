@@ -263,8 +263,12 @@ rf_zwave_task(void)
     }
     CC1100_ASSERT;
     cc1100_sendbyte( CC1100_READ_BURST | CC1100_RXFIFO );
-    for(uint8_t i=0; i<flen; i++)
-      msg[off++] = cc1100_sendbyte( 0 ) ^ 0xff;
+    for(uint8_t i=0; i<flen; i++) {
+      uint8_t d = cc1100_sendbyte( 0 );
+      if(zwave_drate != DRATE_9600)
+        d ^= 0xff;
+      msg[off++] = d;
+    }
     CC1100_DEASSERT;
     if(off >= len)
       break;
@@ -332,8 +336,12 @@ zwave_doSend(uint8_t *msg, uint8_t hblen)
 
   CC1100_ASSERT;
   cc1100_sendbyte(CC1100_WRITE_BURST | CC1100_TXFIFO);
-  for(uint8_t i = 0; i < hblen; i++)
-    cc1100_sendbyte(msg[i] ^ 0xff);
+  for(uint8_t i = 0; i < hblen; i++) {
+    uint8_t d = msg[i];
+    if(zwave_drate != DRATE_9600)
+      d ^= 0xff;
+    cc1100_sendbyte(d);
+  }
   CC1100_DEASSERT;
 
   while(cc1100_readReg( CC1100_MARCSTATE ) == MARCSTATE_TX)
