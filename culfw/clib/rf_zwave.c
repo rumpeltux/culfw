@@ -51,7 +51,7 @@ const uint8_t PROGMEM ZWAVE_CFG_9600[] = {
   CC1100_IOCFG2,    0x01, // 00 GDO2 pin config:               00:FIFOTHR or end
   CC1100_IOCFG0,    0x2e, // 02 GDO0 pin config:                  2e:three state
   CC1100_FIFOTHR,   0x01, // 03 FIFO Threshhold                   01:RX:8, TX:61
-  CC1100_SYNC1,     0xaa, // 04 Sync word, high byte
+  CC1100_SYNC1,     0x55, // 04 Sync word, high byte
   CC1100_SYNC0,     0xf0, // 05 Sync word, low byte
   CC1100_PKTLEN,    0xff, // 06 Packet length
   CC1100_PKTCTRL1,  0x00, // 07 Packet automation control         00:no crc/addr
@@ -233,14 +233,16 @@ rf_zwave_task(void)
   CC1100_ASSERT;
   cc1100_sendbyte( CC1100_READ_BURST | CC1100_RXFIFO );
   for(uint8_t i=0; i<8; i++) { // FIFO RX threshold is 8
-     msg[i] = cc1100_sendbyte( 0 ) ^ 0xff;
+     msg[i] = cc1100_sendbyte( 0 );
+     if(zwave_drate != DRATE_9600)
+       msg[i] ^= 0xff;
   }
   CC1100_DEASSERT;
 
   uint8_t len=msg[7], off=8;
   if(len < 9 || len > MAX_ZWAVE_MSG) {
     rf_zwave_init();
-//DC('l'); DNL();
+    //DC('l'); DNL();
     return;
   }
 
@@ -255,7 +257,7 @@ rf_zwave_task(void)
     if(flen == 0)
       continue;
     if(off+flen > len) {
-//DC('L'); DNL();
+      //DC('L'); DNL();
       rf_zwave_init();
       return;
     }
@@ -285,7 +287,7 @@ rf_zwave_task(void)
       DH2(msg[i]);
     DNL();
   } else {
-//DC('C'); DNL();
+    //DC('C'); DNL();
   }
 
   if(zwave_on == 'r' && isOk &&
