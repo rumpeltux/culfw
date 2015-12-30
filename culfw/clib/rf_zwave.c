@@ -191,7 +191,7 @@ zwave_forMe(uint8_t *msg)
      msg[1] == zwave_hcid[1] &&
      msg[2] == zwave_hcid[2] &&
      msg[3] == zwave_hcid[3] &&
-     msg[8] == zwave_hcid[4])
+     (msg[8] == zwave_hcid[4] || msg[8] == 0xff))
     return 1;
   return 0;
 }
@@ -331,7 +331,7 @@ void
 zwave_doSend(uint8_t *msg, uint8_t hblen)
 {
   LED_ON();
-  cc1100_writeReg(CC1100_PKTLEN, hblen);
+  cc1100_writeReg(CC1100_PKTLEN, zwave_drate == DRATE_9600 ? hblen+1 : hblen);
   ccTX();       // Issues SIDLE, calibrating
 
   CC1100_ASSERT;
@@ -342,11 +342,26 @@ zwave_doSend(uint8_t *msg, uint8_t hblen)
       d ^= 0xff;
     cc1100_sendbyte(d);
   }
+
+  if(zwave_drate == DRATE_9600) { // Send EOF. Does not work.
+    cc1100_writeReg(CC1100_FIFOTHR, 15 );       // alert when TXBUFFER empty
+    while(bit_is_set(CC1100_IN_PORT, CC1100_IN_PIN))
+      ;
+    cc1100_sendbyte(CC1100_WRITE_BURST|CC1100_MDMCFG2);
+    cc1100_sendbyte(0x0e);
+    cc1100_sendbyte(CC1100_WRITE_BURST | CC1100_TXFIFO);
+    cc1100_sendbyte(0x00);
+  }
+
   CC1100_DEASSERT;
 
   while(cc1100_readReg( CC1100_MARCSTATE ) == MARCSTATE_TX)
     ;
   cc1100_writeReg(CC1100_PKTLEN, 0xff);
+  if(zwave_drate == DRATE_9600) {
+    cc1100_writeReg(CC1100_FIFOTHR, 0x01);
+    cc1100_writeReg(CC1100_MDMCFG2, 0x1e);
+  }
 
   zccRX();
   LED_OFF();
