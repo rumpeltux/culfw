@@ -57,6 +57,9 @@
 #ifdef HAS_KOPP_FC
 #include "kopp-fc.h"
 #endif
+#ifdef HAS_ZWAVE
+#include "rf_zwave.h"
+#endif
 
 
 
@@ -124,6 +127,9 @@ const PROGMEM t_fntab fntab[] = {
   { 'u', rf_router_func },
 #endif
   { 'x', ccsetpa },
+#ifdef HAS_ZWAVE
+  { 'z', zwave_func },
+#endif
 
   { 0, 0 },
 };
@@ -206,6 +212,9 @@ main(void)
 #endif
 #ifdef HAS_MBUS
     rf_mbus_task();
+#endif
+#ifdef HAS_ZWAVE
+    rf_zwave_task();
 #endif
   }
 

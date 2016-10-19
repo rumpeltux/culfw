@@ -113,6 +113,7 @@ extern const uint8_t mark433_pin;
 #define HAS_FHT_TF
 #define FHTBUF_SIZE          174      //                 RAM: 174b
 #define HAS_KOPP_FC
+#define HAS_ZWAVE                     // PROGMEM:  882
 
 
 #endif
