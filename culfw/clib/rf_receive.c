@@ -487,7 +487,6 @@ void ReportMonitor(uint16_t timehigh, uint16_t timelow) {
         else 
           rssi = (rssi-64)>>3;
 
-        rssi += 'a';
         if (error) {
           // Use upper case letters instead to indicate an error.
           // If it is set, we missed to correctly report at least one flank.
