@@ -390,6 +390,7 @@ analyze_TX3(bucket_t *b)
   return 1;
 }
 #endif
+
 #ifdef HAS_IT
 uint8_t analyze_it(bucket_t *b)
 {
@@ -402,6 +403,7 @@ uint8_t analyze_it(bucket_t *b)
   return 1;
 }
 #endif
+
 #ifdef HAS_TCM97001
 uint8_t analyze_tcm97001(bucket_t *b)
 {
@@ -415,6 +417,7 @@ uint8_t analyze_tcm97001(bucket_t *b)
   return 1;
 }
 #endif
+
 #ifdef HAS_REVOLT
 uint8_t analyze_revolt(bucket_t *b)
 {
@@ -468,6 +471,7 @@ void ReportTime(uint16_t time) {
 }
 
 void ReportMonitor(uint16_t timehigh, uint16_t timelow) {
+#ifndef NO_RF_DEBUG
     if(timehigh || timelow) {
       uint8_t rssi = 0;
       if((tx_report & REP_LCDMON) || (tx_report & REP_BINTIME)) {
@@ -526,6 +530,7 @@ void ReportMonitor(uint16_t timehigh, uint16_t timelow) {
         }
       }
   }
+#endif // NO_RF_DEBUG
 }
 
 void
@@ -667,6 +672,11 @@ RfAnalyze_Task(void)
 
     checkForRepeatedPackage(&datatype, b);
 
+#if defined(HAS_RF_ROUTER) && defined(HAS_FHT_80b)
+    if(datatype == TYPE_FHT && rf_router_target && !fht_hc0) // Forum #50756
+      packetCheckValues.packageOK = 0;
+#endif
+
     if(packetCheckValues.packageOK) {
       DC(datatype);
       if(nibble)
@@ -682,6 +692,7 @@ RfAnalyze_Task(void)
 
   }
 
+#ifndef NO_RF_DEBUG
   if(tx_report & REP_BITS) {
 
     DC('p');
@@ -706,6 +717,7 @@ RfAnalyze_Task(void)
     DNL();
 
   }
+#endif
 
   b->state = STATE_RESET;
   bucket_nrused--;
@@ -746,8 +758,10 @@ ISR(TIMER1_COMPA_vect)
   OCR1A = TWRAP;                        // Wrap Timer
   TCNT1=tmp;                            // reinitialize timer to measure times > SILENCE
 #endif
+#ifndef NO_RF_DEBUG
   if(tx_report & REP_MONITOR)
     DC('.'); // 0x2E
+#endif
 
   if(bucket_array[bucket_in].state < STATE_COLLECT ||
      bucket_array[bucket_in].byteidx < 2) {    // false alarm
@@ -758,8 +772,10 @@ ISR(TIMER1_COMPA_vect)
 
   if(bucket_nrused+1 == RCV_BUCKETS) {   // each bucket is full: reuse the last
 
+#ifndef NO_RF_DEBUG
     if(tx_report & REP_BITS)
       DS_P(PSTR("BOVF\r\n"));            // Bucket overflow
+#endif
 
     reset_input();
 
