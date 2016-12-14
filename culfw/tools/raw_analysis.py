@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Author: Hagen Fritsch
+import sys
 
 def AssembleCommand(sync, bytes, bits, pause, repeat, (high0, low0, high1, low1), finalhigh, data):
   """Assembles a CUL command."""
@@ -92,9 +93,10 @@ class Parser(object):
     """Reset saved high- and lowtime after a bit was processed."""
     self.hightime = 0
     self.lowtime = 0
-    
+
   def endpacket(self, pause_time=0):
     """Saves information about the received packet."""
+    sys.stderr.write('.')
     self.packet_num += 1
 
     if pause_time == 0:
@@ -146,7 +148,7 @@ class Parser(object):
     if packet.low_time and self.args.pause and (packet.low_time << 4) >= self.args.pause:
       self.endpacket(packet.low_time)
       return
-    
+
     report_threshold = self.args.max_time
     if packet.high_time > report_threshold or packet.low_time > report_threshold:
       if (packet.low_time > report_threshold and not packet.high_time and
@@ -163,7 +165,7 @@ class Parser(object):
     if packet.low_time:
       self.lowtime = packet.low_time
     rtime, ftime = self.hightime, self.lowtime
-    
+
     # If both flanks are present and a reasonable quality of signal is there
     # process the bit.
     if packet.quality >= self.args.quality:
@@ -251,23 +253,20 @@ class Parser(object):
     plt.show()
 
 if __name__ == "__main__":
-  import sys, argparse, textwrap
+  import argparse
+  import serial
+  import textwrap
 
   arg_p = argparse.ArgumentParser(
     formatter_class=argparse.RawDescriptionHelpFormatter,
     description='Analyze culfw raw dumps made in X98 mode.',
     epilog=textwrap.dedent('''\
     Suggested usage:
-      echo X98 > /dev/ttyACM0
-      cat /dev/ttyACM0 > logfile
-      %(name)s -d --pause 3000 logfile
-      
-    But you can also run the script directly on your tty:
-    (press Ctrl+C to stop recording and start the analysis)
-      echo X98 > /dev/ttyACM0
       %(name)s -d --pause 3000 /dev/ttyACM0
+
+    (press Ctrl+C to stop recording and start the analysis)
     ''') % dict(name=sys.argv[0]))
-  arg_p.add_argument('logfile', help='The log file name to analyze')
+  arg_p.add_argument('device', help='The serial device that has the CUL connected')
   arg_p.add_argument('-a', '--no-analysis', action='store_true', help='don\'t run the analysis')
   arg_p.add_argument('-p', '--plot', action='store_true', help='plot the timing data')
   arg_p.add_argument('-d', '--dump-packets', action='store_true',
@@ -292,7 +291,8 @@ if __name__ == "__main__":
   Parser.args = arg_p.parse_args()
 
   p = Parser()
-  tty = open(p.args.logfile, "r")
+  tty = serial.Serial(p.args.device, 38400)
+  tty.write(b'X98\n')  # CUL command that enables RF debugging
   try:
     while 1:
       p.read(tty)
